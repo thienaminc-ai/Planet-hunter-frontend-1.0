@@ -37,7 +37,7 @@ export default function TrainPage() {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const router = useRouter();
+  const _router = useRouter();
 
   const toggleLanguage = () => {
     setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
@@ -85,12 +85,12 @@ export default function TrainPage() {
         } else {
           setError(t.error(response.message));
         }
-      } catch (err: any) {
-        setError(t.error(err.message || 'Không thể lấy danh sách bộ dữ liệu.'));
+      } catch (err: unknown) {
+        setError(t.error((err as Error).message || 'Không thể lấy danh sách bộ dữ liệu.'));
       }
     };
     fetchDatasets();
-  }, []);
+  }, [t]);
 
   const handleTrain = async () => {
     if (!datasetName) {
@@ -109,8 +109,8 @@ export default function TrainPage() {
         setTrainResult(result);
         setCurrentStep(1);
       }
-    } catch (err: any) {
-      setError(t.error(err.message || 'Không thể huấn luyện mô hình.'));
+    } catch (err: unknown) {
+      setError(t.error((err as Error).message || 'Không thể huấn luyện mô hình.'));
     } finally {
       setLoading(false);
     }

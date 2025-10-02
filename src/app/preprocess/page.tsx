@@ -51,10 +51,9 @@ export default function PreprocessPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [removeOutliers, setRemoveOutliers] = useState(false);
   const [showOutlierConfirm, setShowOutlierConfirm] = useState(false);
-  const router = useRouter();
+  const _router = useRouter();
 
-  // NEW: Client-mount flag and stars data for hydration fix
-  const [isClient, setIsClient] = useState(false);
+  // Stars data generated client-side only to avoid SSR mismatch
   const [stars, setStars] = useState<{ top: number; left: number; duration: number; delay: number }[]>([]);
 
   const mandatoryColumns = ['koi_disposition'];
@@ -64,10 +63,9 @@ export default function PreprocessPage() {
     'koi_teq', 'koi_insol', 'koi_steff', 'koi_srad', 'koi_slogg', 'koi_kepmag'
   ];
 
-  // NEW: Generate stars client-side only to avoid SSR mismatch
+  // Generate stars client-side only to avoid SSR mismatch
   useEffect(() => {
-    setIsClient(true);
-    const generatedStars = [...Array(50)].map((_, i) => ({
+    const generatedStars = [...Array(50)].map((_, _i) => ({
       top: Math.random() * 100,
       left: Math.random() * 100,
       duration: 2 + Math.random() * 3,
@@ -81,7 +79,7 @@ export default function PreprocessPage() {
       const initialRemoved = stringColumns.filter(col => analyzeData.columns.includes(col));
       setRemovedColumns(initialRemoved);
     }
-  }, [analyzeData]);
+  }, [analyzeData, stringColumns]);
 
   const toggleLanguage = () => {
     setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
@@ -195,7 +193,7 @@ export default function PreprocessPage() {
     }
   };
 
-  const handleOutlierToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOutlierToggle = (_e: React.ChangeEvent<HTMLInputElement>) => {
     setShowOutlierConfirm(true);
     // Delay setting the state until confirmation
   };
@@ -218,7 +216,7 @@ export default function PreprocessPage() {
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
         <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        {/* Stars - FIXED: Client-only render */}
+        {/* Stars - Client-only render */}
         {stars.map((star, i) => (
           <div
             key={i}

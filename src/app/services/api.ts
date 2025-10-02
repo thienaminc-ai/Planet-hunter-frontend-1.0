@@ -69,6 +69,14 @@ export interface ListDatasetsResponse {
   message: string;
 }
 
+export interface AnalyzeResponse {
+  status: string;
+  columns: string[];
+  shape: {
+    rows: number;
+    cols: number;
+  };
+}
 
 // Tạo Axios instance
 const api: AxiosInstance = axios.create({
@@ -98,7 +106,7 @@ api.interceptors.response.use(
 
 // Định nghĩa endpoints
 export const exoplanetAPI = {
-  preprocessData: async (payload: { action: string; columns?: string[] }): Promise<any> => {
+  preprocessData: async (payload: { action: string; columns?: string[] }): Promise<AnalyzeResponse> => {
     const response = await api.post('/preprocess', payload);
     return response.data;
   },
@@ -128,7 +136,7 @@ export const exoplanetAPI = {
     return response.data;
   },
 
-  testModel: async (payload: { action: string }): Promise<any> => {
+  testModel: async (payload: { action: string }): Promise<AnalyzeResponse> => {
     const response = await api.post('/test', payload);
     return response.data;
   },
@@ -137,12 +145,12 @@ export const exoplanetAPI = {
     const response = await api.get('/model_features', { params: payload });
     return response.data;
   },
-  analyzeColumns: async (payload?: { action: string }): Promise<any> => {
+  analyzeColumns: async (payload?: { action: string }): Promise<AnalyzeResponse> => {
     const response = await api.post('/analyze', payload || {});
     return response.data;
   },
 
-  getData: async (): Promise<any> => {
+  getData: async (): Promise<Record<string, unknown>[]> => {
     const response = await api.get('/data');
     return response.data;
   },

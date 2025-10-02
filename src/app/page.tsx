@@ -8,17 +8,17 @@ export default function Home() {
   const [blackHoleRotation, setBlackHoleRotation] = useState<number>(0);
   const [scrollY, setScrollY] = useState<number>(0);
   
-  // NEW: Client-mount flag to safely apply dynamic styles after hydration
+  // Client-mount flag to safely apply dynamic styles after hydration
   const [isClient, setIsClient] = useState(false);
   
-  // NEW: Stars data generated client-side only to avoid SSR mismatch
+  // Stars data generated client-side only to avoid SSR mismatch
   const [stars, setStars] = useState<{ id: number; width: number; height: number; top: number; left: number; delay: number; duration: number }[]>([]);
 
   useEffect(() => {
-    // NEW: Set client flag after mount
+    // Set client flag after mount
     setIsClient(true);
     
-    // NEW: Generate stars after mount (server & initial client render have empty array)
+    // Generate stars after mount (avoids SSR mismatch)
     const generatedStars = [...Array(150)].map((_, i) => ({
       id: i,
       width: Math.random() * 3 + 1,
@@ -95,9 +95,13 @@ export default function Home() {
   const blackHoleX = 70 - scrollY * 0.15;
   const blackHoleY = 25 + scrollY * 0.05;
 
+  // Safe window dimensions for SSR
+  const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024; // Default fallback
+  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 768; // Default fallback
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans relative overflow-hidden">
-      {/* Animated starfield background - now client-only to fix hydration */}
+      {/* Animated starfield background - client-only to fix hydration */}
       <div className="fixed inset-0 overflow-hidden">
         {stars.map(star => (
           <div
@@ -192,13 +196,13 @@ export default function Home() {
           animationDelay: '2s'
         }} />
        
-        {/* Space distortion effect - FIXED: Use isClient to match server initial render */}
+        {/* Space distortion effect - FIXED: Use isClient and safe window dims to avoid SSR errors */}
         <div
           className="absolute -inset-48 rounded-full pointer-events-none"
           style={{
             background: 'radial-gradient(circle, transparent 50%, rgba(138, 43, 226, 0.1) 70%, transparent 90%)',
             transform: isClient 
-              ? `translate(${(mousePos.x - window.innerWidth / 2) / 80}px, ${(mousePos.y - window.innerHeight / 2) / 80}px)` 
+              ? `translate(${(mousePos.x - windowWidth / 2) / 80}px, ${(mousePos.y - windowHeight / 2) / 80}px)` 
               : 'none',
             filter: 'blur(25px)'
           }}

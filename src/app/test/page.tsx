@@ -29,7 +29,7 @@ export default function TestPage() {
   const [showModal, setShowModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [loadingFeatures, setLoadingFeatures] = useState(false);
-  const router = useRouter();
+  const _router = useRouter();
 
   const keyFeatures = [
     { key: 'koi_score', label: language === 'vi' ? 'Điểm tin cậy (0-1)' : 'Disposition Score (0-1)', default: 1.0 },
@@ -175,8 +175,8 @@ export default function TestPage() {
         setModelFeatures(keyFeatures.map(f => f.key));
         return false;
       }
-    } catch (err: any) {
-      setError(t.error(err.message || 'Không thể lấy danh sách đặc trưng mô hình.'));
+    } catch (err: unknown) {
+      setError(t.error((err as Error).message || 'Không thể lấy danh sách đặc trưng mô hình.'));
       setModelFeatures(keyFeatures.map(f => f.key));
       return false;
     } finally {
@@ -193,12 +193,12 @@ export default function TestPage() {
         } else {
           setError(t.error(response.message));
         }
-      } catch (err: any) {
-        setError(t.error(err.message || 'Không thể lấy danh sách mô hình.'));
+      } catch (err: unknown) {
+        setError(t.error((err as Error).message || 'Không thể lấy danh sách mô hình.'));
       }
     };
     fetchModels();
-  }, []);
+  }, [t]);
 
   const handleInputChange = (key: string, value: string) => {
     setInputData(prev => ({
@@ -229,8 +229,8 @@ export default function TestPage() {
         setPredictResult(result);
         setCurrentStep(2);
       }
-    } catch (err: any) {
-      setError(t.error(err.message || 'Không thể dự đoán.'));
+    } catch (err: unknown) {
+      setError(t.error((err as Error).message || 'Không thể dự đoán.'));
     } finally {
       setLoading(false);
     }
