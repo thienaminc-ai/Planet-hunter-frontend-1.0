@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { exoplanetAPI } from '../services/api';
 import keplerData from '../../../kepler-fields.json';
 
+// Constants moved outside component to prevent recreation on every render
+const mandatoryColumns = ['koi_disposition'];
+const stringColumns = ['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_tce_delivname'];
+const importantColumns = [
+  'koi_period', 'koi_duration', 'koi_depth', 'koi_impact', 'koi_time0bk',
+  'koi_teq', 'koi_insol', 'koi_steff', 'koi_srad', 'koi_slogg', 'koi_kepmag'
+];
+
 // TypeScript interfaces
 interface Shape {
   rows: number;
@@ -56,13 +64,6 @@ export default function PreprocessPage() {
   // Stars data generated client-side only to avoid SSR mismatch
   const [stars, setStars] = useState<{ top: number; left: number; duration: number; delay: number }[]>([]);
 
-  const mandatoryColumns = ['koi_disposition'];
-  const stringColumns = ['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_tce_delivname'];
-  const importantColumns = [
-    'koi_period', 'koi_duration', 'koi_depth', 'koi_impact', 'koi_time0bk',
-    'koi_teq', 'koi_insol', 'koi_steff', 'koi_srad', 'koi_slogg', 'koi_kepmag'
-  ];
-
   // Generate stars client-side only to avoid SSR mismatch
   useEffect(() => {
     const generatedStars = [...Array(50)].map((_, _i) => ({
@@ -79,7 +80,7 @@ export default function PreprocessPage() {
       const initialRemoved = stringColumns.filter(col => analyzeData.columns.includes(col));
       setRemovedColumns(initialRemoved);
     }
-  }, [analyzeData, stringColumns]);
+  }, [analyzeData]);
 
   const toggleLanguage = () => {
     setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
