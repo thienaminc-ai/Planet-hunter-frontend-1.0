@@ -1,17 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { exoplanetAPI } from '../services/api';
 import keplerData from '../../../kepler-fields.json';
-
-// Constants moved outside component to prevent recreation on every render
-const mandatoryColumns = ['koi_disposition'];
-const stringColumns = ['kepid', 'kepoi_name', 'kepler_name', 'koi_pdisposition', 'koi_tce_delivname'];
-const importantColumns = [
-  'koi_period', 'koi_duration', 'koi_depth', 'koi_impact', 'koi_time0bk',
-  'koi_teq', 'koi_insol', 'koi_steff', 'koi_srad', 'koi_slogg', 'koi_kepmag'
-];
+import tessData from '../../../tess-fields.json';
 
 // TypeScript interfaces
 interface Shape {
@@ -22,6 +16,7 @@ interface AnalyzeResponse {
   status: string;
   columns: string[];
   shape: Shape;
+  dataset?: string;
 }
 interface CreateVariantStats {
   original_rows: number;
@@ -36,16 +31,46 @@ interface CreateVariantResponse {
   status: string;
   name: string;
   stats?: CreateVariantStats;
+  dataset?: string;
 }
-interface KeplerExplanation {
+interface FieldsExplanation {
   vi: string;
   en: string;
+  type: string;
 }
-interface KeplerData {
-  [key: string]: KeplerExplanation;
+interface FieldsData {
+  [key: string]: FieldsExplanation;
 }
 
-export default function PreprocessPage() {
+// Định nghĩa kiểu TessLabel
+type TessLabel = 'FP' | 'PC' | 'KP' | 'APC' | 'FA' | 'CP' | 'UNKNOWN';
+
+function PreprocessPageContent() {
+  const searchParams = useSearchParams();
+  const datasetParam = searchParams.get('dataset') as 'kepler' | 'tess' | null;
+  const [dataset, setDataset] = useState<'kepler' | 'tess' | null>(datasetParam || null);
+  const [showDatasetModal, setShowDatasetModal] = useState(false);
+
+  // Dynamic fields data
+  const fieldsData = useMemo(() => 
+    dataset === 'kepler' ? (keplerData as FieldsData) : dataset === 'tess' ? (tessData as FieldsData) : {},
+    [dataset]
+  );
+
+  // Memoized constants from fieldsData
+  const mandatoryColumns = useMemo(
+    () => (dataset ? Object.keys(fieldsData).filter((key: string) => fieldsData[key].type === 'mandatory') : []),
+    [dataset, fieldsData]
+  );
+  const mustRemoveColumns = useMemo(
+    () => (dataset ? Object.keys(fieldsData).filter((key: string) => fieldsData[key].type === 'must_remove') : []),
+    [dataset, fieldsData]
+  );
+  const importantColumns = useMemo(
+    () => (dataset ? Object.keys(fieldsData).filter((key: string) => fieldsData[key].type === 'important') : []),
+    [dataset, fieldsData]
+  );
+
   const [language, setLanguage] = useState<'en' | 'vi'>('vi');
   const [analyzeData, setAnalyzeData] = useState<AnalyzeResponse | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
@@ -59,14 +84,14 @@ export default function PreprocessPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [removeOutliers, setRemoveOutliers] = useState(false);
   const [showOutlierConfirm, setShowOutlierConfirm] = useState(false);
-  const _router = useRouter();
+  const router = useRouter();
 
   // Stars data generated client-side only to avoid SSR mismatch
   const [stars, setStars] = useState<{ top: number; left: number; duration: number; delay: number }[]>([]);
 
   // Generate stars client-side only to avoid SSR mismatch
   useEffect(() => {
-    const generatedStars = [...Array(50)].map((_, _i) => ({
+    const generatedStars = [...Array(50)].map(() => ({
       top: Math.random() * 100,
       left: Math.random() * 100,
       duration: 2 + Math.random() * 3,
@@ -75,18 +100,20 @@ export default function PreprocessPage() {
     setStars(generatedStars);
   }, []);
 
+  // Initialize removedColumns when analyzeData and dataset are available
   useEffect(() => {
-    if (analyzeData) {
-      const initialRemoved = stringColumns.filter(col => analyzeData.columns.includes(col));
+    if (analyzeData && dataset && analyzeData.columns && mustRemoveColumns.length > 0) {
+      const initialRemoved = mustRemoveColumns.filter(col => analyzeData.columns.includes(col));
       setRemovedColumns(initialRemoved);
     }
-  }, [analyzeData]);
+  }, [analyzeData, mustRemoveColumns, dataset]);
 
   const toggleLanguage = () => {
     setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
   };
 
-  const t = {
+  // Base translations
+  const baseT = {
     title: language === 'vi' ? 'Tiền Xử Lý Dữ Liệu' : 'Data Preprocessing',
     subtitle: language === 'vi' ? 'Khám phá và xử lý dữ liệu ngoại hành tinh từ vũ trụ sâu thẳm' : 'Explore and process exoplanet data from deep space',
     startButton: language === 'vi' ? 'Bắt Đầu Phân Tích' : 'Start Analysis',
@@ -101,7 +128,7 @@ export default function PreprocessPage() {
     importantLabel: language === 'vi' ? 'Quan trọng' : 'Important',
     mustRemove: language === 'vi' ? 'Bắt buộc bỏ' : 'Must Remove',
     datasetName: language === 'vi' ? 'Tên Dataset' : 'Dataset Name',
-    namePlaceholder: language === 'vi' ? 'VD: kepler_clean_v1' : 'e.g., kepler_clean_v1',
+    namePlaceholder: language === 'vi' ? 'VD: dataset_clean_v1' : 'e.g., dataset_clean_v1',
     removeOutliers: language === 'vi' ? 'Loại bỏ Outliers (IQR)' : 'Remove Outliers (IQR)',
     nextStep: language === 'vi' ? 'Tiếp Theo' : 'Next',
     create: language === 'vi' ? 'Tạo Dataset' : 'Create Dataset',
@@ -125,22 +152,44 @@ export default function PreprocessPage() {
       : 'Removing outliers will clean the data but significantly reduce the sample size, affecting model accuracy. ⚠️ Not recommended.',
     confirm: language === 'vi' ? 'Xác Nhận' : 'Confirm',
     cancel: language === 'vi' ? 'Hủy' : 'Cancel',
+    selectDataset: language === 'vi' ? 'Chọn Bộ Dữ Liệu' : 'Select Dataset',
+    selectDatasetPrompt: language === 'vi' ? 'Vui lòng chọn bộ dữ liệu để bắt đầu tiền xử lý:' : 'Please select a dataset to start preprocessing:',
+    keplerOption: language === 'vi' ? 'Kepler - Dữ liệu từ kính viễn vọng Kepler' : 'Kepler - Data from the Kepler telescope',
+    tessOption: language === 'vi' ? 'TESS - Dữ liệu từ kính viễn vọng TESS' : 'TESS - Data from the TESS telescope',
   };
+
+  // Overrides for TESS
+  const tessOverrides = {
+    title: language === 'vi' ? 'Tiền Xử Lý Dữ Liệu TESS' : 'TESS Data Preprocessing',
+    subtitle: language === 'vi' ? 'Khám phá và xử lý dữ liệu ngoại hành tinh từ TESS' : 'Explore and process exoplanet data from TESS',
+    namePlaceholder: language === 'vi' ? 'VD: tess_clean_v1' : 'e.g., tess_clean_v1',
+    flagNoise: language === 'vi' ? 'Nhiễu cờ (lim)' : 'Flag Noise (lim)',
+  };
+
+  const t = dataset === 'tess' ? { ...baseT, ...tessOverrides } : baseT;
 
   const getExplanation = (col: string): string => {
-    return (keplerData as KeplerData)[col]?.[language] || (language === 'vi' ? 'Thông tin bổ sung' : 'Additional info');
+    return fieldsData[col]?.[language] || (language === 'vi' ? 'Thông tin bổ sung' : 'Additional info');
   };
 
-  const handleCreateVariant = async (): Promise<void> => {
+  const handleCreateVariant = () => {
+    setShowDatasetModal(true);
+    setError(null);
+  };
+
+  const handleDatasetSelection = async (selectedDataset: 'kepler' | 'tess') => {
+    setDataset(selectedDataset);
     setLoading(true);
     setError(null);
     try {
-      const result: AnalyzeResponse = await exoplanetAPI.analyzeColumns({ action: 'analyze_kepler' });
+      const result: AnalyzeResponse = await exoplanetAPI.analyzeColumns({ action: `analyze_${selectedDataset}`, dataset: selectedDataset });
       if (result.status === 'success') {
         setAnalyzeData(result);
         setDatasetName('');
         setCurrentStep(0);
+        setShowDatasetModal(false);
         setShowModal(true);
+        router.push(`/preprocess?dataset=${selectedDataset}`);
       }
     } catch (err: unknown) {
       setError((err as Error).message);
@@ -150,14 +199,14 @@ export default function PreprocessPage() {
   };
 
   const toggleRemoveColumn = (col: string): void => {
-    if (mandatoryColumns.includes(col) || stringColumns.includes(col)) return;
+    if (mandatoryColumns.includes(col) || mustRemoveColumns.includes(col)) return;
     setRemovedColumns(prev =>
       prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]
     );
   };
 
-  const displayColumns: string[] = analyzeData ? analyzeData.columns.filter((col: string) => !mandatoryColumns.includes(col) && !stringColumns.includes(col)) : [];
-  const remainingColumns: string[] = analyzeData ? analyzeData.columns.filter((col: string) => !removedColumns.includes(col) && !stringColumns.includes(col)) : [];
+  const displayColumns: string[] = analyzeData ? analyzeData.columns.filter((col: string) => !mandatoryColumns.includes(col) && !mustRemoveColumns.includes(col)) : [];
+  const remainingColumns: string[] = analyzeData ? analyzeData.columns.filter((col: string) => !removedColumns.includes(col) && !mustRemoveColumns.includes(col)) : [];
 
   const handleNextStep = (): void => {
     if (remainingColumns.length === 0) {
@@ -174,6 +223,10 @@ export default function PreprocessPage() {
       setError(t.enterName);
       return;
     }
+    if (!dataset) {
+      setError(t.selectDataset);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -181,6 +234,7 @@ export default function PreprocessPage() {
         columns: selectedColumns,
         name: datasetName,
         remove_outliers: removeOutliers,
+        dataset,
       });
       if (result.status === 'success') {
         setCreatedName(result.name);
@@ -194,9 +248,8 @@ export default function PreprocessPage() {
     }
   };
 
-  const handleOutlierToggle = (_e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOutlierToggle = () => {
     setShowOutlierConfirm(true);
-    // Delay setting the state until confirmation
   };
 
   const confirmOutlier = () => {
@@ -208,6 +261,32 @@ export default function PreprocessPage() {
     setRemoveOutliers(false);
     setShowOutlierConfirm(false);
   };
+  const getLabelDisplay = (label: string | number) => {
+    if (dataset === 'tess') {
+      const labelMap: Record<TessLabel, string> = {
+        'FP': language === 'vi' ? 'Nhầm Lẫn Sai' : 'False Positive',
+        'PC': language === 'vi' ? 'Ứng Viên Hành Tinh' : 'Planet Candidate',
+        'KP': language === 'vi' ? 'Hành Tinh Đã Biết' : 'Known Planet',
+        'APC': language === 'vi' ? 'Ứng Viên Hành Tinh Xác Nhận' : 'Affirmed Planet Candidate',
+        'FA': language === 'vi' ? 'Cảnh Báo Sai' : 'False Alarm',
+        'CP': language === 'vi' ? 'Hành Tinh Được Xác Nhận' : 'Confirmed Planet',
+        'UNKNOWN': language === 'vi' ? 'Không Xác Định' : 'Unknown',
+      };
+      // Nếu label là số, ánh xạ từ số sang nhãn (giả sử 0->FP, 1->PC, 2->KP, 3->APC, 4->FA, 5->CP)
+      const labelMapping: Record<number, TessLabel> = {
+        0: 'FP',
+        1: 'PC',
+        2: 'KP',
+        3: 'APC',
+        4: 'FA',
+        5: 'CP',
+      };
+      const mappedLabel = typeof label === 'number' ? labelMapping[label as number] : label;
+      return labelMap[mappedLabel as TessLabel] || label.toString();
+    }
+    return label.toString();
+  };
+  const trainLink = dataset ? `/train?dataset=${dataset}` : '/train';
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
@@ -215,9 +294,8 @@ export default function PreprocessPage() {
       <div className="fixed inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black via-indigo-950/20 to-purple-950/30"></div>
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-        {/* Stars - Client-only render */}
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         {stars.map((star, i) => (
           <div
             key={i}
@@ -226,7 +304,7 @@ export default function PreprocessPage() {
               top: `${star.top}%`,
               left: `${star.left}%`,
               animation: `twinkle ${star.duration}s infinite`,
-              animationDelay: `${star.delay}s`
+              animationDelay: `${star.delay}s`,
             }}
           ></div>
         ))}
@@ -241,7 +319,7 @@ export default function PreprocessPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                Exoplanet Hunter
+                {dataset === 'tess' ? 'TESS Exoplanet Hunter' : dataset === 'kepler' ? 'Kepler Exoplanet Hunter' : 'Exoplanet Hunter'}
               </h2>
               <p className="text-xs text-gray-400">Data Processing System</p>
             </div>
@@ -262,7 +340,7 @@ export default function PreprocessPage() {
 
       {/* Main Content */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-16">
-        {!showModal && (
+        {!showModal && !showDatasetModal && (
           <div className="text-center mb-16">
             <div className="inline-block mb-6">
               <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-5xl shadow-2xl shadow-purple-500/30 animate-pulse">
@@ -297,8 +375,47 @@ export default function PreprocessPage() {
         )}
       </main>
 
+      {/* Dataset Selection Modal */}
+      {showDatasetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-4xl bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 rounded-2xl shadow-2xl border border-purple-500/20 p-12 flex flex-col items-center">
+            <div className="text-6xl mb-6 text-purple-400 animate-pulse">🪐</div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
+              {t.selectDataset}
+            </h2>
+            <p className="text-gray-400 mb-8 text-center max-w-xl">{t.selectDatasetPrompt}</p>
+            <div className="grid grid-cols-2 gap-6 w-full max-w-2xl">
+              <button
+                onClick={() => handleDatasetSelection('kepler')}
+                className="group relative p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-xl border border-purple-500/30 hover:bg-gradient-to-br hover:from-purple-800/40 hover:to-blue-800/40 transition-all duration-300 shadow-lg hover:shadow-purple-500/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-blue-400 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                <div className="text-4xl mb-4">🔭</div>
+                <h3 className="text-xl font-bold text-purple-300">{t.keplerOption}</h3>
+                <p className="text-sm text-gray-400 mt-2">High-precision photometry for exoplanet discovery</p>
+              </button>
+              <button
+                onClick={() => handleDatasetSelection('tess')}
+                className="group relative p-6 bg-gradient-to-br from-blue-900/30 to-indigo-900/30 rounded-xl border border-blue-500/30 hover:bg-gradient-to-br hover:from-blue-800/40 hover:to-indigo-800/40 transition-all duration-300 shadow-lg hover:shadow-blue-500/50"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-400 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                <div className="text-4xl mb-4">🛰️</div>
+                <h3 className="text-xl font-bold text-blue-300">{t.tessOption}</h3>
+                <p className="text-sm text-gray-400 mt-2">All-sky survey for transiting exoplanets</p>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowDatasetModal(false)}
+              className="mt-8 px-6 py-3 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg transition-all font-medium border border-gray-700"
+            >
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Step Modal */}
-      {showModal && analyzeData && (
+      {showModal && analyzeData && dataset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-7xl max-h-[90vh] bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 rounded-2xl shadow-2xl border border-purple-500/20 flex flex-col overflow-hidden">
             {/* Header */}
@@ -354,7 +471,7 @@ export default function PreprocessPage() {
                         <span className="mr-2">📋</span> {t.allFields}
                       </h3>
                       <span className="text-sm text-gray-400">
-                        {displayColumns.length} {t.fields} • {stringColumns.filter(col => analyzeData?.columns.includes(col)).length} {t.autoRemoved}
+                        {displayColumns.length} {t.fields} • {mustRemoveColumns.filter(col => analyzeData?.columns.includes(col)).length} {t.autoRemoved}
                       </span>
                     </div>
                     <div className="grid grid-cols-4 gap-2 max-h-[500px] overflow-y-auto pr-2">
@@ -506,12 +623,12 @@ export default function PreprocessPage() {
                       <div className="space-y-3">
                         {Object.entries(stats.label_dist).map(([label, pct]) => (
                           <div key={label} className="flex items-center justify-between">
-                            <span className="text-gray-300">{label}</span>
+                            <span className="text-gray-300">{getLabelDisplay(label)}</span>
                             <div className="flex items-center space-x-3 flex-1 ml-4">
                               <div className="flex-1 bg-black/40 rounded-full h-3 overflow-hidden">
                                 <div 
                                   className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-1000"
-                                  style={{width: `${pct}%`}}
+                                  style={{ width: `${pct}%` }}
                                 ></div>
                               </div>
                               <span className="text-lg font-bold text-purple-400 w-16 text-right">{pct}%</span>
@@ -522,7 +639,7 @@ export default function PreprocessPage() {
                     </div>
                   )}
 
-                  <Link href="/train">
+                  <Link href={trainLink}>
                     <button className="mt-8 w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl hover:from-green-500 hover:to-emerald-500 transition-all text-lg font-semibold shadow-2xl shadow-green-500/30 flex items-center justify-center space-x-2">
                       <span>{t.trainModel}</span>
                       <span className="text-2xl">🚀</span>
@@ -576,7 +693,7 @@ export default function PreprocessPage() {
                   </button>
                 )}
                 {currentStep === 2 && (
-                  <Link href="/train">
+                  <Link href={trainLink}>
                     <button className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-lg transition-all font-semibold shadow-lg shadow-green-500/30 flex items-center space-x-2">
                       <span>{t.trainModel}</span>
                       <span>🚀</span>
@@ -620,5 +737,20 @@ export default function PreprocessPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function PreprocessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-spin">🌌</div>
+          <p className="text-xl text-purple-300">Loading...</p>
+        </div>
+      </div>
+    }>
+      <PreprocessPageContent />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-// Updated src/app/services/api.ts (add new interfaces and functions)
+// Updated src/app/services/api.ts (add dataset param to all methods, support tess)
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 export interface CreateVariantResponse {
@@ -7,7 +7,7 @@ export interface CreateVariantResponse {
   files: { 
     csv: string; 
     scaler: string;
-    imputer?: string;  // Thêm optional này
+    imputer?: string;
   };
   stats?: {
     original_rows: number;
@@ -18,6 +18,7 @@ export interface CreateVariantResponse {
     total_noise_removed_pct: number;
     label_dist: Record<string, number>;
   };
+  dataset?: string;
 }
 
 export interface ModelFeaturesResponse {
@@ -26,6 +27,7 @@ export interface ModelFeaturesResponse {
   num_features: number;
   features: string[];
   importance: Record<string, number>;
+  dataset?: string;
 }
 
 export interface TrainResponse {
@@ -33,6 +35,7 @@ export interface TrainResponse {
   message: string;
   model_name: string;
   model_path: string;
+  best_params?: Record<string, string | number | string[]>;
   stats: {
     train_accuracy: number;
     test_accuracy: number;
@@ -44,6 +47,7 @@ export interface TrainResponse {
     test_f1: number;
     feature_importance: Record<string, number>;
   };
+  dataset?: string;
 }
 
 export interface PredictResponse {
@@ -55,18 +59,21 @@ export interface PredictResponse {
     probabilities: Record<string, number>;
     confidence: number;
   };
+  dataset?: string;
 }
 
 export interface ListModelsResponse {
   status: string;
   models: string[];
   message: string;
+  dataset?: string;
 }
 
 export interface ListDatasetsResponse {
   status: string;
   datasets: string[];
   message: string;
+  dataset?: string;
 }
 
 export interface AnalyzeResponse {
@@ -76,6 +83,7 @@ export interface AnalyzeResponse {
     rows: number;
     cols: number;
   };
+  dataset?: string;
 }
 
 // Tạo Axios instance
@@ -104,48 +112,49 @@ api.interceptors.response.use(
   }
 );
 
-// Định nghĩa endpoints
+// Định nghĩa endpoints (add dataset param to all)
 export const exoplanetAPI = {
-  preprocessData: async (payload: { action: string; columns?: string[] }): Promise<AnalyzeResponse> => {
+  preprocessData: async (payload: { action: string; columns?: string[]; dataset?: 'kepler' | 'tess' }): Promise<AnalyzeResponse> => {
     const response = await api.post('/preprocess', payload);
     return response.data;
   },
 
-  createVariant: async (payload: { columns: string[]; name: string; remove_outliers?: boolean }): Promise<CreateVariantResponse> => {
+  createVariant: async (payload: { columns: string[]; name: string; remove_outliers?: boolean; dataset: 'kepler' | 'tess' }): Promise<CreateVariantResponse> => {
     const response = await api.post('/create_variant', payload);
     return response.data;
   },
 
-  trainModel: async (payload: { dataset_name: string; model_name: string }): Promise<TrainResponse> => {
+  trainModel: async (payload: { dataset_name: string; model_name: string; param_grid?: Record<string, string | number | string[] | number[] | undefined>; dataset: 'kepler' | 'tess' }): Promise<TrainResponse> => {
     const response = await api.post('/train', payload);
     return response.data;
   },
 
-  listDatasets: async (): Promise<ListDatasetsResponse> => {
-    const response = await api.get('/list_datasets');
+  listDatasets: async (dataset: 'kepler' | 'tess' = 'kepler'): Promise<ListDatasetsResponse> => {
+    const response = await api.get('/list_datasets', { params: { dataset } });
     return response.data;
   },
 
-  listModels: async (): Promise<ListModelsResponse> => {  // New
-    const response = await api.get('/list_models');
+  listModels: async (dataset: 'kepler' | 'tess' = 'kepler'): Promise<ListModelsResponse> => {
+    const response = await api.get('/list_models', { params: { dataset } });
     return response.data;
   },
 
-  predictModel: async (payload: { model_name: string; input_data: Record<string, number> }): Promise<PredictResponse> => {  // New
+  predictModel: async (payload: { model_name: string; input_data: Record<string, number>; dataset: 'kepler' | 'tess' }): Promise<PredictResponse> => {
     const response = await api.post('/predict', payload);
     return response.data;
   },
 
-  testModel: async (payload: { action: string }): Promise<AnalyzeResponse> => {
+  testModel: async (payload: { action: string; dataset?: 'kepler' | 'tess' }): Promise<AnalyzeResponse> => {
     const response = await api.post('/test', payload);
     return response.data;
   },
-  // Thêm method
-  modelFeatures: async (payload: { model_name: string }): Promise<ModelFeaturesResponse> => {
+  
+  modelFeatures: async (payload: { model_name: string; dataset: 'kepler' | 'tess' }): Promise<ModelFeaturesResponse> => {
     const response = await api.get('/model_features', { params: payload });
     return response.data;
   },
-  analyzeColumns: async (payload?: { action: string }): Promise<AnalyzeResponse> => {
+  
+  analyzeColumns: async (payload?: { action: string; dataset?: 'kepler' | 'tess' }): Promise<AnalyzeResponse> => {
     const response = await api.post('/analyze', payload || {});
     return response.data;
   },

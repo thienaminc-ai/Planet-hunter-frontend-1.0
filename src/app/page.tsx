@@ -1,24 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
+import BlackHoleScene from './components/BlackHoleScene';
 
 export default function Home() {
   const [language, setLanguage] = useState<'vi' | 'en'>('vi');
-  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [rocketPos, setRocketPos] = useState<{ x: number; y: number }>({ x: -100, y: 50 });
-  const [blackHoleRotation, setBlackHoleRotation] = useState<number>(0);
-  const [scrollY, setScrollY] = useState<number>(0);
-  
-  // Client-mount flag to safely apply dynamic styles after hydration
-  const [isClient, setIsClient] = useState(false);
-  
-  // Stars data generated client-side only to avoid SSR mismatch
   const [stars, setStars] = useState<{ id: number; width: number; height: number; top: number; left: number; delay: number; duration: number }[]>([]);
+  const [moonRotation, setMoonRotation] = useState(0);
 
   useEffect(() => {
-    // Set client flag after mount
-    setIsClient(true);
-    
-    // Generate stars after mount (avoids SSR mismatch)
     const generatedStars = [...Array(150)].map((_, i) => ({
       id: i,
       width: Math.random() * 3 + 1,
@@ -31,21 +21,7 @@ export default function Home() {
     setStars(generatedStars);
   }, []);
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent): void => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
-  useEffect(() => {
-    const handleScroll = (): void => {
-      setScrollY(window.scrollY);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   useEffect(() => {
     const moveRocket = setInterval(() => {
@@ -61,12 +37,18 @@ export default function Home() {
     return () => clearInterval(moveRocket);
   }, []);
 
+  useEffect(() => {
+    const rotateMoons = setInterval(() => {
+      setMoonRotation(prev => (prev + 1) % 360);
+    }, 50);
+    return () => clearInterval(rotateMoons);
+  }, []);
+
   const toggleLanguage = (): void => {
     setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
   };
 
   const handlePlanetClick = (route: string): void => {
-    setBlackHoleRotation(prev => prev - 120);
     window.location.href = route;
   };
 
@@ -86,23 +68,22 @@ export default function Home() {
       title: language === 'vi' ? 'Kiểm thử Mô hình' : 'Model Testing',
       desc: language === 'vi' ? 'Đánh giá hiệu suất mô hình' : 'Evaluate model performance'
     },
+    option4: {
+      title: language === 'vi' ? 'Bách khoa Dữ liệu' : 'Data Dictionary',
+      desc: language === 'vi' ? 'Tìm hiểu về dữ liệu ngoại hành tinh' : 'Learn about exoplanet data'
+    },
     toggle: language === 'vi' ? 'EN' : 'VI',
     footer: {
       copyright: language === 'vi' ? '© 2025 Seishinteki - NASA Space Apps Challenge' : '© 2025 Seishinteki - NASA Space Apps Challenge'
     }
   };
 
-  const blackHoleX = 70 - scrollY * 0.15;
-  const blackHoleY = 25 + scrollY * 0.05;
-
-  // Safe window dimensions for SSR
-  const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024; // Default fallback
-  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 768; // Default fallback
+  const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans relative overflow-hidden">
-      {/* Animated starfield background - client-only to fix hydration */}
-      <div className="fixed inset-0 overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden z-5">
         {stars.map(star => (
           <div
             key={star.id}
@@ -119,97 +100,10 @@ export default function Home() {
         ))}
       </div>
       
-      {/* 3D Black hole with nebula */}
-      <div
-        className="fixed w-[500px] h-[500px] pointer-events-none transition-all duration-700 ease-out z-5"
-        style={{
-          top: `${blackHoleY}%`,
-          left: `${blackHoleX}%`,
-          transform: `rotate(${blackHoleRotation}deg)`
-        }}
-      >
-        {/* Outer nebula rings */}
-        <div className="absolute -inset-32 rounded-full opacity-40 animate-pulse" style={{
-          background: 'radial-gradient(circle, transparent 30%, rgba(138, 43, 226, 0.3) 50%, rgba(255, 0, 128, 0.2) 70%, transparent 90%)',
-          animationDuration: '5s',
-          filter: 'blur(20px)'
-        }} />
-       
-        <div className="absolute -inset-24 rounded-full opacity-50 animate-pulse" style={{
-          background: 'radial-gradient(circle, transparent 40%, rgba(75, 0, 130, 0.4) 60%, rgba(138, 43, 226, 0.3) 75%, transparent 90%)',
-          animationDuration: '6s',
-          animationDelay: '1s',
-          filter: 'blur(15px)'
-        }} />
-        {/* 3D Sphere black hole core */}
-        <div className="absolute inset-0 rounded-full" style={{
-          background: 'radial-gradient(circle at 35% 35%, rgba(40, 40, 60, 0.8) 0%, rgba(10, 10, 20, 0.95) 40%, #000000 70%)',
-          boxShadow: `
-            inset -40px -40px 80px rgba(138, 43, 226, 0.4),
-            inset 40px 40px 80px rgba(0, 0, 0, 0.9),
-            0 0 150px 50px rgba(138, 43, 226, 0.6),
-            0 0 250px 100px rgba(75, 0, 130, 0.4)
-          `
-        }}>
-          {/* Event horizon with 3D effect */}
-          <div className="absolute inset-8 rounded-full" style={{
-            background: 'radial-gradient(circle at 40% 40%, rgba(20, 0, 40, 0.5) 0%, #000000 60%)',
-            border: '2px solid rgba(138, 43, 226, 0.3)',
-            boxShadow: 'inset 0 0 50px rgba(138, 43, 226, 0.3)'
-          }} />
-         
-          {/* Inner core darkness */}
-          <div className="absolute inset-20 rounded-full bg-black" style={{
-            boxShadow: 'inset 0 0 60px rgba(0, 0, 0, 1), 0 0 40px rgba(138, 43, 226, 0.5)'
-          }} />
-        </div>
-       
-        {/* Rotating accretion disk */}
-        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '25s' }}>
-          <div className="absolute inset-0 rounded-full opacity-80" style={{
-            background: 'conic-gradient(from 0deg, transparent 10%, rgba(138, 43, 226, 0.5) 20%, rgba(255, 140, 0, 0.7) 30%, rgba(255, 0, 128, 0.6) 40%, transparent 50%)',
-            filter: 'blur(12px)'
-          }} />
-        </div>
-        {/* Secondary accretion disk */}
-        <div className="absolute inset-0 animate-spin" style={{ animationDuration: '35s', animationDirection: 'reverse' }}>
-          <div className="absolute inset-0 rounded-full opacity-60" style={{
-            background: 'conic-gradient(from 180deg, transparent 20%, rgba(75, 0, 130, 0.4) 35%, rgba(138, 43, 226, 0.5) 45%, transparent 60%)',
-            filter: 'blur(15px)'
-          }} />
-        </div>
-        {/* Gravitational lensing rings with 3D depth */}
-        <div className="absolute -inset-16 rounded-full border-2 opacity-30 animate-pulse" style={{
-          borderColor: 'rgba(138, 43, 226, 0.4)',
-          animationDuration: '3s',
-          boxShadow: '0 0 30px rgba(138, 43, 226, 0.3)'
-        }} />
-        <div className="absolute -inset-28 rounded-full border opacity-20 animate-pulse" style={{
-          borderColor: 'rgba(138, 43, 226, 0.3)',
-          animationDuration: '4s',
-          animationDelay: '1s',
-          boxShadow: '0 0 40px rgba(138, 43, 226, 0.2)'
-        }} />
-        <div className="absolute -inset-40 rounded-full border opacity-10 animate-pulse" style={{
-          borderColor: 'rgba(75, 0, 130, 0.2)',
-          animationDuration: '5s',
-          animationDelay: '2s'
-        }} />
-       
-        {/* Space distortion effect - FIXED: Use isClient and safe window dims to avoid SSR errors */}
-        <div
-          className="absolute -inset-48 rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle, transparent 50%, rgba(138, 43, 226, 0.1) 70%, transparent 90%)',
-            transform: isClient 
-              ? `translate(${(mousePos.x - windowWidth / 2) / 80}px, ${(mousePos.y - windowHeight / 2) / 80}px)` 
-              : 'none',
-            filter: 'blur(25px)'
-          }}
-        />
+      <div className="fixed inset-0 z-0 pointer-events-auto">
+        <BlackHoleScene width={windowWidth} height={windowHeight} />
       </div>
       
-      {/* Flying rocket */}
       <div
         className="fixed text-6xl transform -rotate-45 transition-all duration-100 pointer-events-none z-20"
         style={{
@@ -251,94 +145,94 @@ export default function Home() {
             {t.description}
           </p>
         </div>
+        
         <div className="relative w-full max-w-7xl h-[900px]">
-          {/* Sun-like planet (Orange) - Largest, Top Right */}
+          {/* Sun-like planet (Orange) - Largest, Top Right with 2 moons */}
           <div
             className="absolute top-12 right-32 w-96 h-96 cursor-pointer group"
             onClick={() => handlePlanetClick('/train')}
           >
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-orange-300 to-red-600 blur-3xl opacity-70 group-hover:opacity-100 transition-all duration-500" />
-            <div className="relative bg-gradient-to-br from-yellow-300 via-orange-400 to-red-500 rounded-full w-full h-full flex flex-col items-center justify-center border-4 border-orange-600 shadow-2xl transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-500"
+            <div className="relative rounded-full w-full h-full flex flex-col items-center justify-center shadow-2xl transform group-hover:scale-110 transition-all duration-500"
               style={{
-                boxShadow: 'inset -30px -30px 80px rgba(0,0,0,0.4), inset 30px 30px 80px rgba(255,255,255,0.3), 0 0 120px rgba(255, 140, 0, 0.9), 0 0 200px rgba(255, 100, 0, 0.5)'
+                background: 'radial-gradient(circle at 30% 30%, #ffd700, #ff8c00 40%, #ff4500 70%, #8b0000)',
+                boxShadow: 'inset -40px -40px 100px rgba(0,0,0,0.6), inset 20px 20px 80px rgba(255,255,255,0.2), 0 0 120px rgba(255, 140, 0, 0.9)'
               }}>
-              {/* Enhanced Solar flares with depth */}
-              <div className="absolute top-4 right-8 w-20 h-20 rounded-full bg-yellow-400/40 shadow-inner blur-md animate-pulse" style={{ animationDuration: '3s' }} />
-              <div className="absolute bottom-10 left-12 w-16 h-16 rounded-full bg-orange-600/50 shadow-inner blur-sm animate-pulse" style={{ animationDuration: '4s' }} />
-              <div className="absolute top-28 left-20 w-14 h-14 rounded-full bg-red-500/40 shadow-inner blur-sm" />
-              <div className="absolute top-40 right-24 w-12 h-12 rounded-full bg-yellow-300/50 shadow-inner blur-md animate-pulse" style={{ animationDuration: '2.5s' }} />
-              <div className="absolute bottom-32 right-32 w-10 h-10 rounded-full bg-orange-500/35 shadow-inner" />
-             
-              {/* Highlight sphere effect */}
-              <div className="absolute top-12 left-16 w-32 h-32 rounded-full bg-yellow-200/20 blur-2xl" />
-             
               <div className="relative z-10 text-center px-8 transform group-hover:scale-105 transition-transform duration-300">
                 <span className="text-7xl mb-5 block filter drop-shadow-2xl animate-pulse" style={{ animationDuration: '3s' }}>🤖</span>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3 drop-shadow-lg">
+                <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
                   {t.option2.title}
                 </h3>
-                <p className="text-base text-gray-800 drop-shadow-md">
+                <p className="text-base text-gray-100 drop-shadow-md">
                   {t.option2.desc}
                 </p>
               </div>
             </div>
+            {/* Moon 1 */}
+            <div
+              className="absolute w-16 h-16 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 35% 35%, #e0e0e0, #909090 60%, #505050)',
+                boxShadow: 'inset -8px -8px 20px rgba(0,0,0,0.7), inset 4px 4px 15px rgba(255,255,255,0.2), 0 0 30px rgba(150, 150, 150, 0.4)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${moonRotation}deg) translateX(240px) translateY(-50%)`,
+                transformOrigin: '0 0'
+              }}
+            />
+            {/* Moon 2 */}
+            <div
+              className="absolute w-12 h-12 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 40% 40%, #d4b896, #8b7355 60%, #5a4a3a)',
+                boxShadow: 'inset -6px -6px 15px rgba(0,0,0,0.7), inset 3px 3px 10px rgba(255,255,255,0.2), 0 0 20px rgba(139, 115, 85, 0.4)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${moonRotation * 1.5}deg) translateX(-260px) translateY(-50%)`,
+                transformOrigin: '0 0'
+              }}
+            />
           </div>
+
           {/* Moon-like planet (Gray) - Smallest, Bottom Left */}
           <div
             className="absolute bottom-20 left-24 w-52 h-52 cursor-pointer group"
             onClick={() => handlePlanetClick('/preprocess')}
           >
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-400 to-gray-800 blur-2xl opacity-50 group-hover:opacity-80 transition-all duration-500" />
-            <div className="relative bg-gradient-to-br from-gray-100 via-gray-400 to-gray-700 rounded-full w-full h-full flex flex-col items-center justify-center border-4 border-gray-600 shadow-2xl transform group-hover:scale-115 group-hover:-rotate-12 transition-all duration-500"
+            <div className="relative rounded-full w-full h-full flex flex-col items-center justify-center shadow-2xl transform group-hover:scale-115 transition-all duration-500"
               style={{
-                boxShadow: 'inset -25px -25px 60px rgba(0,0,0,0.6), inset 25px 25px 60px rgba(255,255,255,0.15), 0 0 70px rgba(150, 150, 150, 0.5)'
+                background: 'radial-gradient(circle at 35% 35%, #d3d3d3, #808080 50%, #404040 80%, #1a1a1a)',
+                boxShadow: 'inset -30px -30px 70px rgba(0,0,0,0.8), inset 15px 15px 50px rgba(255,255,255,0.15), 0 0 60px rgba(120, 120, 120, 0.4)'
               }}>
-              {/* Enhanced Moon craters with varied sizes */}
-              <div className="absolute top-6 right-12 w-16 h-16 rounded-full bg-gray-800/60 shadow-inner border border-gray-700/30" />
-              <div className="absolute bottom-16 left-10 w-12 h-12 rounded-full bg-gray-800/50 shadow-inner border border-gray-700/20" />
-              <div className="absolute top-20 left-14 w-10 h-10 rounded-full bg-gray-800/45 shadow-inner" />
-              <div className="absolute bottom-28 right-18 w-8 h-8 rounded-full bg-gray-800/40 shadow-inner" />
-              <div className="absolute top-32 right-20 w-6 h-6 rounded-full bg-gray-800/35 shadow-inner" />
-              <div className="absolute bottom-36 left-24 w-5 h-5 rounded-full bg-gray-800/30 shadow-inner" />
-             
-              {/* Highlight */}
-              <div className="absolute top-8 left-10 w-20 h-20 rounded-full bg-white/10 blur-xl" />
-             
+              <div className="absolute top-8 right-14 w-14 h-14 rounded-full bg-black/40 blur-sm" />
+              <div className="absolute bottom-18 left-12 w-10 h-10 rounded-full bg-black/35 blur-sm" />
+              <div className="absolute top-24 left-16 w-8 h-8 rounded-full bg-black/30" />
               <div className="relative z-10 text-center px-6 transform group-hover:scale-105 transition-transform duration-300">
                 <span className="text-6xl mb-4 block filter drop-shadow-2xl">📊</span>
-                <h3 className="text-lg font-bold text-gray-900 mb-2 drop-shadow-md">
+                <h3 className="text-lg font-bold text-white mb-2 drop-shadow-md">
                   {t.option1.title}
                 </h3>
-                <p className="text-sm text-gray-800 drop-shadow-sm">
+                <p className="text-sm text-gray-200 drop-shadow-sm">
                   {t.option1.desc}
                 </p>
               </div>
             </div>
           </div>
-          {/* Ocean planet (Blue) - Medium, Top Center-Left */}
+
+          {/* Ocean planet (Blue) - Medium, Top Center-Left with 1 moon */}
           <div
             className="absolute top-32 left-1/4 -translate-x-1/2 w-80 h-80 cursor-pointer group"
             onClick={() => handlePlanetClick('/test')}
           >
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-300 to-blue-800 blur-3xl opacity-65 group-hover:opacity-95 transition-all duration-500" />
-            <div className="relative bg-gradient-to-br from-cyan-200 via-blue-400 to-blue-800 rounded-full w-full h-full flex flex-col items-center justify-center border-4 border-blue-700 shadow-2xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500"
+            <div className="relative rounded-full w-full h-full flex flex-col items-center justify-center shadow-2xl transform group-hover:scale-110 transition-all duration-500"
               style={{
-                boxShadow: 'inset -28px -28px 70px rgba(0,0,0,0.5), inset 28px 28px 70px rgba(255,255,255,0.25), 0 0 100px rgba(0, 150, 255, 0.7), 0 0 150px rgba(0, 100, 200, 0.4)'
+                background: 'radial-gradient(circle at 30% 30%, #87ceeb, #4682b4 45%, #00008b 75%, #000033)',
+                boxShadow: 'inset -35px -35px 80px rgba(0,0,0,0.6), inset 18px 18px 60px rgba(255,255,255,0.2), 0 0 100px rgba(0, 150, 255, 0.7)'
               }}>
-              {/* Enhanced Ocean patterns with swirls */}
-              <div className="absolute top-10 right-14 w-24 h-20 rounded-full bg-blue-700/40 shadow-inner blur-md" />
-              <div className="absolute bottom-16 left-16 w-22 h-18 rounded-full bg-cyan-300/50 shadow-inner blur-sm animate-pulse" style={{ animationDuration: '4s' }} />
-              <div className="absolute top-24 left-20 w-18 h-16 rounded-full bg-blue-800/45 shadow-inner blur-sm" />
-              <div className="absolute bottom-32 right-24 w-14 h-12 rounded-full bg-cyan-400/40 shadow-inner blur-md" />
-              <div className="absolute top-36 right-32 w-10 h-8 rounded-full bg-blue-600/35 shadow-inner" />
-             
-              {/* Water shimmer effect */}
-              <div className="absolute top-16 left-12 w-28 h-28 rounded-full bg-cyan-300/20 blur-2xl animate-pulse" style={{ animationDuration: '5s' }} />
-             
-              {/* Cloud-like formations */}
-              <div className="absolute top-32 right-20 w-16 h-12 rounded-full bg-white/20 blur-lg" />
-              <div className="absolute bottom-40 left-28 w-20 h-14 rounded-full bg-white/15 blur-lg" />
-             
+              <div className="absolute top-12 right-16 w-28 h-24 rounded-full bg-white/15 blur-2xl" />
+              <div className="absolute bottom-20 left-20 w-24 h-20 rounded-full bg-blue-900/40 blur-xl" />
               <div className="relative z-10 text-center px-7 transform group-hover:scale-105 transition-transform duration-300">
                 <span className="text-7xl mb-5 block filter drop-shadow-2xl">🔭</span>
                 <h3 className="text-2xl font-bold text-white mb-3 drop-shadow-lg">
@@ -349,6 +243,67 @@ export default function Home() {
                 </p>
               </div>
             </div>
+            {/* Moon */}
+            <div
+              className="absolute w-14 h-14 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 38% 38%, #f5f5f5, #a0a0a0 55%, #606060)',
+                boxShadow: 'inset -7px -7px 18px rgba(0,0,0,0.7), inset 3px 3px 12px rgba(255,255,255,0.2), 0 0 25px rgba(160, 160, 160, 0.4)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${moonRotation * 0.8}deg) translateX(200px) translateY(-50%)`,
+                transformOrigin: '0 0'
+              }}
+            />
+          </div>
+
+          {/* Dictionary planet (Purple) - Medium, Bottom Right with 2 moons */}
+          <div
+            className="absolute bottom-32 right-24 w-72 h-72 cursor-pointer group"
+            onClick={() => handlePlanetClick('/dictionary')}
+          >
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-300 to-indigo-800 blur-3xl opacity-65 group-hover:opacity-95 transition-all duration-500" />
+            <div className="relative rounded-full w-full h-full flex flex-col items-center justify-center shadow-2xl transform group-hover:scale-110 transition-all duration-500"
+              style={{
+                background: 'radial-gradient(circle at 32% 32%, #dda0dd, #9370db 45%, #4b0082 75%, #1a001a)',
+                boxShadow: 'inset -32px -32px 75px rgba(0,0,0,0.6), inset 16px 16px 55px rgba(255,255,255,0.2), 0 0 90px rgba(138, 43, 226, 0.7)'
+              }}>
+              <div className="absolute top-14 right-14 w-26 h-22 rounded-full bg-white/12 blur-2xl" />
+              <div className="absolute bottom-18 left-18 w-22 h-18 rounded-full bg-indigo-900/35 blur-xl" />
+              <div className="relative z-10 text-center px-6 transform group-hover:scale-105 transition-transform duration-300">
+                <span className="text-7xl mb-5 block filter drop-shadow-2xl">📚</span>
+                <h3 className="text-xl font-bold text-white mb-3 drop-shadow-lg">
+                  {t.option4.title}
+                </h3>
+                <p className="text-base text-purple-50 drop-shadow-md">
+                  {t.option4.desc}
+                </p>
+              </div>
+            </div>
+            {/* Moon 1 */}
+            <div
+              className="absolute w-12 h-12 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 40% 40%, #faf0e6, #c4a77d 55%, #8b7355)',
+                boxShadow: 'inset -6px -6px 15px rgba(0,0,0,0.7), inset 3px 3px 10px rgba(255,255,255,0.2), 0 0 20px rgba(196, 167, 125, 0.4)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${moonRotation * 1.2}deg) translateX(180px) translateY(-50%)`,
+                transformOrigin: '0 0'
+              }}
+            />
+            {/* Moon 2 */}
+            <div
+              className="absolute w-10 h-10 rounded-full pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle at 42% 42%, #e6e6fa, #9999cc 55%, #666699)',
+                boxShadow: 'inset -5px -5px 12px rgba(0,0,0,0.7), inset 2px 2px 8px rgba(255,255,255,0.2), 0 0 18px rgba(153, 153, 204, 0.4)',
+                top: '50%',
+                left: '50%',
+                transform: `rotate(${moonRotation * 1.8}deg) translateX(-200px) translateY(-50%)`,
+                transformOrigin: '0 0'
+              }}
+            />
           </div>
         </div>
       </main>

@@ -1,198 +1,247 @@
 {
-    "kepid": {
-      "vi": "Mã định danh duy nhất của ngôi sao trong danh mục Kepler",
-      "en": "Unique identifier of the star in the Kepler catalog"
-    },
-    "kepoi_name": {
-      "vi": "Tên đối tượng quan tâm (KOI), dùng để chỉ ứng viên hành tinh",
-      "en": "Kepler Object of Interest name, used for planet candidates"
-    },
-    "kepler_name": {
-      "vi": "Tên chính thức của hành tinh nếu được xác nhận là hành tinh ngoại",
-      "en": "Official name of the planet if confirmed as exoplanet"
-    },
-    "koi_disposition": {
-      "vi": "Trạng thái phân loại: CONFIRMED (xác nhận), CANDIDATE (ứng viên), FALSE (dương tính giả)",
-      "en": "Classification status: CONFIRMED, CANDIDATE, or FALSE positive"
-    },
-    "koi_pdisposition": {
-      "vi": "Trạng thái phân loại dựa trên dữ liệu Kepler: CANDIDATE hoặc FALSE",
-      "en": "Classification based on Kepler data: CANDIDATE or FALSE"
-    },
-    "koi_score": {
-      "vi": "Điểm tin cậy (0-1), giá trị cao hơn cho thấy khả năng là hành tinh thật cao hơn",
-      "en": "Confidence score (0-1), higher values indicate higher probability of being a real planet"
-    },
-    "koi_fpflag_nt": {
-      "vi": "Cờ báo tín hiệu không giống hiện tượng transit (dương tính giả)",
-      "en": "Flag for signal not resembling transit phenomenon (false positive)"
-    },
-    "koi_fpflag_ss": {
-      "vi": "Cờ báo hiện tượng do nhật thực sao (stellar eclipse, dương tính giả)",
-      "en": "Flag for stellar eclipse phenomenon (false positive)"
-    },
-    "koi_fpflag_co": {
-      "vi": "Cờ báo lệch tâm ánh sáng (centroid offset, dương tính giả)",
-      "en": "Flag for centroid offset (false positive)"
-    },
-    "koi_fpflag_ec": {
-      "vi": "Cờ báo nhiễu từ ephemeris match (dương tính giả)",
-      "en": "Flag for ephemeris match contamination (false positive)"
-    },
-    "koi_period": {
-      "vi": "Chu kỳ quỹ đạo của hành tinh (ngày), thời gian giữa hai lần transit",
-      "en": "Orbital period of the planet (days), time between two transits"
-    },
-    "koi_period_err1": {
-      "vi": "Sai số trên của chu kỳ quỹ đạo (ngày)",
-      "en": "Upper error of orbital period (days)"
-    },
-    "koi_period_err2": {
-      "vi": "Sai số dưới của chu kỳ quỹ đạo (ngày)",
-      "en": "Lower error of orbital period (days)"
-    },
-    "koi_time0bk": {
-      "vi": "Thời điểm diễn ra transit đầu tiên (BKJD - Barycentric Kepler Julian Day)",
-      "en": "Time of first transit (BKJD - Barycentric Kepler Julian Day)"
-    },
-    "koi_time0bk_err1": {
-      "vi": "Sai số trên của thời điểm transit đầu tiên",
-      "en": "Upper error of first transit time"
-    },
-    "koi_time0bk_err2": {
-      "vi": "Sai số dưới của thời điểm transit đầu tiên",
-      "en": "Lower error of first transit time"
-    },
-    "koi_impact": {
-      "vi": "Tham số va chạm, cho biết hành tinh đi qua vị trí nào trên đĩa ngôi sao",
-      "en": "Impact parameter, indicates planet's path across stellar disk"
-    },
-    "koi_impact_err1": {
-      "vi": "Sai số trên của tham số va chạm",
-      "en": "Upper error of impact parameter"
-    },
-    "koi_impact_err2": {
-      "vi": "Sai số dưới của tham số va chạm",
-      "en": "Lower error of impact parameter"
-    },
-    "koi_duration": {
-      "vi": "Thời gian transit diễn ra (giờ), thời gian hành tinh che khuất ngôi sao",
-      "en": "Transit duration (hours), time planet obscures the star"
-    },
-    "koi_duration_err1": {
-      "vi": "Sai số trên của thời gian transit",
-      "en": "Upper error of transit duration"
-    },
-    "koi_duration_err2": {
-      "vi": "Sai số dưới của thời gian transit",
-      "en": "Lower error of transit duration"
-    },
-    "koi_depth": {
-      "vi": "Độ sâu transit (ppm), mức độ giảm độ sáng do hành tinh che khuất",
-      "en": "Transit depth (ppm), brightness decrease from planet obscuring star"
-    },
-    "koi_depth_err1": {
-      "vi": "Sai số trên của độ sâu transit",
-      "en": "Upper error of transit depth"
-    },
-    "koi_depth_err2": {
-      "vi": "Sai số dưới của độ sâu transit",
-      "en": "Lower error of transit depth"
-    },
-    "koi_prad": {
-      "vi": "Bán kính hành tinh (so với bán kính Trái Đất)",
-      "en": "Planet radius (relative to Earth radius)"
-    },
-    "koi_prad_err1": {
-      "vi": "Sai số trên của bán kính hành tinh",
-      "en": "Upper error of planet radius"
-    },
-    "koi_prad_err2": {
-      "vi": "Sai số dưới của bán kính hành tinh",
-      "en": "Lower error of planet radius"
-    },
-    "koi_teq": {
-      "vi": "Nhiệt độ cân bằng của hành tinh (K), ước tính dựa trên bức xạ từ ngôi sao",
-      "en": "Planet equilibrium temperature (K), estimated from stellar radiation"
-    },
-    "koi_teq_err1": {
-      "vi": "Sai số trên của nhiệt độ cân bằng",
-      "en": "Upper error of equilibrium temperature"
-    },
-    "koi_teq_err2": {
-      "vi": "Sai số dưới của nhiệt độ cân bằng",
-      "en": "Lower error of equilibrium temperature"
-    },
-    "koi_insol": {
-      "vi": "Dòng bức xạ mà hành tinh nhận được, so với Trái Đất",
-      "en": "Insolation flux received by planet, relative to Earth"
-    },
-    "koi_insol_err1": {
-      "vi": "Sai số trên của dòng bức xạ",
-      "en": "Upper error of insolation flux"
-    },
-    "koi_insol_err2": {
-      "vi": "Sai số dưới của dòng bức xạ",
-      "en": "Lower error of insolation flux"
-    },
-    "koi_model_snr": {
-      "vi": "Tỷ lệ tín hiệu trên nhiễu của tín hiệu transit, cho biết độ rõ của tín hiệu",
-      "en": "Signal-to-noise ratio of transit signal, indicates signal clarity"
-    },
-    "koi_tce_plnt_num": {
-      "vi": "Số thứ tự của hành tinh trong sự kiện ứng viên transit (TCE)",
-      "en": "Planet number in Transit Candidate Event (TCE)"
-    },
-    "koi_tce_delivname": {
-      "vi": "Tên đợt dữ liệu chứa sự kiện transit",
-      "en": "Data delivery name containing transit event"
-    },
-    "koi_steff": {
-      "vi": "Nhiệt độ hiệu dụng của ngôi sao (K)",
-      "en": "Stellar effective temperature (K)"
-    },
-    "koi_steff_err1": {
-      "vi": "Sai số trên của nhiệt độ ngôi sao",
-      "en": "Upper error of stellar temperature"
-    },
-    "koi_steff_err2": {
-      "vi": "Sai số dưới của nhiệt độ ngôi sao",
-      "en": "Lower error of stellar temperature"
-    },
-    "koi_slogg": {
-      "vi": "Trọng lực bề mặt ngôi sao (log10(cm/s²))",
-      "en": "Stellar surface gravity (log10(cm/s²))"
-    },
-    "koi_slogg_err1": {
-      "vi": "Sai số trên của trọng lực bề mặt",
-      "en": "Upper error of surface gravity"
-    },
-    "koi_slogg_err2": {
-      "vi": "Sai số dưới của trọng lực bề mặt",
-      "en": "Lower error of surface gravity"
-    },
-    "koi_srad": {
-      "vi": "Bán kính ngôi sao (so với bán kính Mặt Trời)",
-      "en": "Stellar radius (relative to Solar radius)"
-    },
-    "koi_srad_err1": {
-      "vi": "Sai số trên của bán kính ngôi sao",
-      "en": "Upper error of stellar radius"
-    },
-    "koi_srad_err2": {
-      "vi": "Sai số dưới của bán kính ngôi sao",
-      "en": "Lower error of stellar radius"
-    },
-    "ra": {
-      "vi": "Kinh độ hoàng đạo của ngôi sao (Right Ascension, độ thập phân)",
-      "en": "Star's Right Ascension (decimal degrees)"
-    },
-    "dec": {
-      "vi": "Vĩ độ hoàng đạo của ngôi sao (Declination, độ thập phân)",
-      "en": "Star's Declination (decimal degrees)"
-    },
-    "koi_kepmag": {
-      "vi": "Độ sáng của ngôi sao trong băng Kepler (magnitude)",
-      "en": "Star brightness in Kepler band (magnitude)"
-    }
+  "kepid": {
+  "vi": "Mã định danh duy nhất của ngôi sao trong danh mục Kepler",
+  "en": "Unique identifier for a star in the Kepler catalog",
+  "type": "must_remove"
+  },
+  "kepoi_name": {
+  "vi": "Tên đối tượng quan tâm (KOI), dùng để chỉ ứng viên hành tinh",
+  "en": "Kepler Object of Interest (KOI) name, used for planet candidates",
+  "type": "must_remove"
+  },
+  "kepler_name": {
+  "vi": "Tên chính thức của hành tinh nếu được xác nhận là hành tinh ngoại",
+  "en": "Official name of the confirmed exoplanet",
+  "type": "must_remove"
+  },
+  "koi_disposition": {
+  "vi": "Trạng thái phân loại: CONFIRMED (hành tinh xác nhận), CANDIDATE (ứng viên), FALSE (không phải hành tinh)",
+  "en": "Classification status: CONFIRMED (planet), CANDIDATE (potential planet), FALSE (not a planet)",
+  "type": "mandatory"
+  },
+  "koi_pdisposition": {
+  "vi": "Trạng thái phân loại dựa trên dữ liệu Kepler: CANDIDATE (ứng viên) hoặc FALSE (không phải hành tinh)",
+  "en": "Classification from Kepler data: CANDIDATE or FALSE",
+  "type": "must_remove"
+  },
+  "koi_score": {
+  "vi": "Điểm tin cậy (0-1), số càng cao càng có khả năng là hành tinh thật",
+  "en": "Confidence score (0-1), higher means more likely a real planet",
+  "type": "numeric"
+  },
+  "koi_fpflag_nt": {
+  "vi": "Cờ báo tín hiệu không giống hiện tượng quá cảnh (không phải hành tinh)",
+  "en": "Flag for signal not resembling a planet transit (not a planet)",
+  "type": "flag"
+  },
+  "koi_fpflag_ss": {
+  "vi": "Cờ báo hiện tượng do nhật thực sao (không phải hành tinh)",
+  "en": "Flag for stellar eclipse (not a planet)",
+  "type": "flag"
+  },
+  "koi_fpflag_co": {
+  "vi": "Cờ báo lệch tâm ánh sáng (không phải hành tinh)",
+  "en": "Flag for centroid offset (not a planet)",
+  "type": "flag"
+  },
+  "koi_fpflag_ec": {
+  "vi": "Cờ báo nhiễu từ ephemeris match (không phải hành tinh)",
+  "en": "Flag for ephemeris match contamination (not a planet)",
+  "type": "flag"
+  },
+  "koi_period": {
+  "vi": "Chu kỳ quỹ đạo của hành tinh (ngày), thời gian giữa hai lần quá cảnh",
+  "en": "Orbital period of the planet (days), time between two transits",
+  "type": "important"
+  },
+  "koi_period_err1": {
+  "vi": "Sai số trên của chu kỳ quỹ đạo",
+  "en": "Upper error of orbital period",
+  "type": "numeric"
+  },
+  "koi_period_err2": {
+  "vi": "Sai số dưới của chu kỳ quỹ đạo",
+  "en": "Lower error of orbital period",
+  "type": "numeric"
+  },
+  "koi_time0bk": {
+  "vi": "Thời điểm quá cảnh đầu tiên (ngày Kepler Julian, BKJD)",
+  "en": "Time of first transit (Barycentric Kepler Julian Day, BKJD)",
+  "type": "important"
+  },
+  "koi_time0bk_err1": {
+  "vi": "Sai số trên của thời điểm quá cảnh đầu tiên",
+  "en": "Upper error of first transit time",
+  "type": "numeric"
+  },
+  "koi_time0bk_err2": {
+  "vi": "Sai số dưới của thời điểm quá cảnh đầu tiên",
+  "en": "Lower error of first transit time",
+  "type": "numeric"
+  },
+  "koi_impact": {
+  "vi": "Tham số va chạm, cho biết hành tinh đi qua vị trí nào trên đĩa ngôi sao",
+  "en": "Impact parameter, shows where planet crosses the star's disk",
+  "type": "important"
+  },
+  "koi_impact_err1": {
+  "vi": "Sai số trên của tham số va chạm",
+  "en": "Upper error of impact parameter",
+  "type": "numeric"
+  },
+  "koi_impact_err2": {
+  "vi": "Sai số dưới của tham số va chạm",
+  "en": "Lower error of impact parameter",
+  "type": "numeric"
+  },
+  "koi_duration": {
+  "vi": "Thời gian quá cảnh (giờ), thời gian hành tinh che khuất ngôi sao",
+  "en": "Transit duration (hours), time planet obscures the star",
+  "type": "important"
+  },
+  "koi_duration_err1": {
+  "vi": "Sai số trên của thời gian quá cảnh",
+  "en": "Upper error of transit duration",
+  "type": "numeric"
+  },
+  "koi_duration_err2": {
+  "vi": "Sai số dưới của thời gian quá cảnh",
+  "en": "Lower error of transit duration",
+  "type": "numeric"
+  },
+  "koi_depth": {
+  "vi": "Độ sâu quá cảnh (ppm), mức độ giảm ánh sáng khi hành tinh che ngôi sao",
+  "en": "Transit depth (ppm), brightness decrease when planet obscures star",
+  "type": "important"
+  },
+  "koi_depth_err1": {
+  "vi": "Sai số trên của độ sâu quá cảnh",
+  "en": "Upper error of transit depth",
+  "type": "numeric"
+  },
+  "koi_depth_err2": {
+  "vi": "Sai số dưới của độ sâu quá cảnh",
+  "en": "Lower error of transit depth",
+  "type": "numeric"
+  },
+  "koi_prad": {
+  "vi": "Bán kính hành tinh (so với bán kính Trái Đất)",
+  "en": "Planet radius (relative to Earth radius)",
+  "type": "important"
+  },
+  "koi_prad_err1": {
+  "vi": "Sai số trên của bán kính hành tinh",
+  "en": "Upper error of planet radius",
+  "type": "numeric"
+  },
+  "koi_prad_err2": {
+  "vi": "Sai số dưới của bán kính hành tinh",
+  "en": "Lower error of planet radius",
+  "type": "numeric"
+  },
+  "koi_teq": {
+  "vi": "Nhiệt độ cân bằng của hành tinh (K), dựa trên bức xạ từ ngôi sao",
+  "en": "Planet equilibrium temperature (K), based on stellar radiation",
+  "type": "important"
+  },
+  "koi_teq_err1": {
+  "vi": "Sai số trên của nhiệt độ cân bằng",
+  "en": "Upper error of equilibrium temperature",
+  "type": "numeric"
+  },
+  "koi_teq_err2": {
+  "vi": "Sai số dưới của nhiệt độ cân bằng",
+  "en": "Lower error of equilibrium temperature",
+  "type": "numeric"
+  },
+  "koi_insol": {
+  "vi": "Dòng bức xạ hành tinh nhận được (so với Trái Đất)",
+  "en": "Insolation flux received by planet (relative to Earth)",
+  "type": "important"
+  },
+  "koi_insol_err1": {
+  "vi": "Sai số trên của dòng bức xạ",
+  "en": "Upper error of insolation flux",
+  "type": "numeric"
+  },
+  "koi_insol_err2": {
+  "vi": "Sai số dưới của dòng bức xạ",
+  "en": "Lower error of insolation flux",
+  "type": "numeric"
+  },
+  "koi_model_snr": {
+  "vi": "Tỷ lệ tín hiệu trên nhiễu, cho biết độ rõ của tín hiệu quá cảnh",
+  "en": "Signal-to-noise ratio, indicates clarity of transit signal",
+  "type": "numeric"
+  },
+  "koi_tce_plnt_num": {
+  "vi": "Số thứ tự của hành tinh trong sự kiện ứng viên quá cảnh (TCE)",
+  "en": "Planet number in Transit Candidate Event (TCE)",
+  "type": "must_remove"
+  },
+  "koi_tce_delivname": {
+  "vi": "Tên đợt dữ liệu chứa sự kiện quá cảnh",
+  "en": "Data delivery name for transit event",
+  "type": "must_remove"
+  },
+  "koi_steff": {
+  "vi": "Nhiệt độ bề mặt của ngôi sao (K)",
+  "en": "Stellar effective temperature (K)",
+  "type": "important"
+  },
+  "koi_steff_err1": {
+  "vi": "Sai số trên của nhiệt độ ngôi sao",
+  "en": "Upper error of stellar temperature",
+  "type": "numeric"
+  },
+  "koi_steff_err2": {
+  "vi": "Sai số dưới của nhiệt độ ngôi sao",
+  "en": "Lower error of stellar temperature",
+  "type": "numeric"
+  },
+  "koi_slogg": {
+  "vi": "Trọng lực bề mặt của ngôi sao (log10(cm/s²))",
+  "en": "Stellar surface gravity (log10(cm/s²))",
+  "type": "important"
+  },
+  "koi_slogg_err1": {
+  "vi": "Sai số trên của trọng lực bề mặt",
+  "en": "Upper error of surface gravity",
+  "type": "numeric"
+  },
+  "koi_slogg_err2": {
+  "vi": "Sai số dưới của trọng lực bề mặt",
+  "en": "Lower error of surface gravity",
+  "type": "numeric"
+  },
+  "koi_srad": {
+  "vi": "Bán kính ngôi sao (so với bán kính Mặt Trời)",
+  "en": "Stellar radius (relative to Solar radius)",
+  "type": "important"
+  },
+  "koi_srad_err1": {
+  "vi": "Sai số trên của bán kính ngôi sao",
+  "en": "Upper error of stellar radius",
+  "type": "numeric"
+  },
+  "koi_srad_err2": {
+  "vi": "Sai số dưới của bán kính ngôi sao",
+  "en": "Lower error of stellar radius",
+  "type": "numeric"
+  },
+  "ra": {
+  "vi": "Kinh độ hoàng đạo của ngôi sao (độ thập phân)",
+  "en": "Star's Right Ascension (decimal degrees)",
+  "type": "numeric"
+  },
+  "dec": {
+  "vi": "Vĩ độ hoàng đạo của ngôi sao (độ thập phân)",
+  "en": "Star's Declination (decimal degrees)",
+  "type": "numeric"
+  },
+  "koi_kepmag": {
+  "vi": "Độ sáng của ngôi sao trong băng Kepler (magnitude)",
+  "en": "Star brightness in Kepler band (magnitude)",
+  "type": "important"
+  }
   }

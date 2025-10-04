@@ -1,0 +1,327 @@
+{
+  "toi": {
+    "vi": "Mã định danh duy nhất cho đối tượng quan tâm của TESS, thường là ứng viên hành tinh",
+    "en": "Unique identifier for TESS Object of Interest, typically a planet candidate",
+    "type": "must_remove"
+  },
+  "tid": {
+    "vi": "Mã định danh ngôi sao trong danh mục đầu vào của TESS",
+    "en": "Star identifier in the TESS Input Catalog",
+    "type": "must_remove"
+  },
+  "tfopwg_disp": {
+    "vi": "Trạng thái phân loại: CP (hành tinh xác nhận), FP (không phải hành tinh), KP (hành tinh đã biết), PC (ứng viên hành tinh)",
+    "en": "Classification status: CP (Confirmed Planet), FP (False Positive), KP (Known Planet), PC (Planet Candidate)",
+    "type": "mandatory"
+  },
+  "rastr": {
+    "vi": "Kinh độ hoàng đạo của ngôi sao (dạng giờ/phút/giây)",
+    "en": "Star's Right Ascension (sexagesimal format)",
+    "type": "must_remove"
+  },
+  "ra": {
+    "vi": "Kinh độ hoàng đạo của ngôi sao (dạng độ thập phân)",
+    "en": "Star's Right Ascension (decimal degrees)",
+    "type": "numeric"
+  },
+  "decstr": {
+    "vi": "Vĩ độ hoàng đạo của ngôi sao (dạng độ/phút/giây)",
+    "en": "Star's Declination (sexagesimal format)",
+    "type": "must_remove"
+  },
+  "dec": {
+    "vi": "Vĩ độ hoàng đạo của ngôi sao (dạng độ thập phân)",
+    "en": "Star's Declination (decimal degrees)",
+    "type": "numeric"
+  },
+  "st_pmra": {
+    "vi": "Tốc độ chuyển động của ngôi sao theo kinh độ hoàng đạo (milliarcseconds/năm)",
+    "en": "Star's Proper Motion in Right Ascension (mas/yr)",
+    "type": "numeric"
+  },
+  "st_pmra_err1": {
+    "vi": "Sai số trên của tốc độ chuyển động theo kinh độ hoàng đạo",
+    "en": "Upper error of Proper Motion in Right Ascension",
+    "type": "numeric"
+  },
+  "st_pmra_err2": {
+    "vi": "Sai số dưới của tốc độ chuyển động theo kinh độ hoàng đạo",
+    "en": "Lower error of Proper Motion in Right Ascension",
+    "type": "numeric"
+  },
+  "st_pmralim": {
+    "vi": "Cờ chỉ ra giới hạn của tốc độ chuyển động theo kinh độ hoàng đạo",
+    "en": "Limit flag for Proper Motion in Right Ascension",
+    "type": "flag"
+  },
+  "st_pmdec": {
+    "vi": "Tốc độ chuyển động của ngôi sao theo vĩ độ hoàng đạo (milliarcseconds/năm)",
+    "en": "Star's Proper Motion in Declination (mas/yr)",
+    "type": "numeric"
+  },
+  "st_pmdecerr1": {
+    "vi": "Sai số trên của tốc độ chuyển động theo vĩ độ hoàng đạo",
+    "en": "Upper error of Proper Motion in Declination",
+    "type": "numeric"
+  },
+  "st_pmdecerr2": {
+    "vi": "Sai số dưới của tốc độ chuyển động theo vĩ độ hoàng đạo",
+    "en": "Lower error of Proper Motion in Declination",
+    "type": "numeric"
+  },
+  "st_pmdeclim": {
+    "vi": "Cờ chỉ ra giới hạn của tốc độ chuyển động theo vĩ độ hoàng đạo",
+    "en": "Limit flag for Proper Motion in Declination",
+    "type": "flag"
+  },
+  "pl_tranmid": {
+    "vi": "Thời điểm giữa của quá cảnh (hành tinh đi qua trước ngôi sao), tính bằng ngày Julian (BJD)",
+    "en": "Midpoint of planet transit (planet crossing star), in Barycentric Julian Date (BJD)",
+    "type": "important"
+  },
+  "pl_tranmiderr1": {
+    "vi": "Sai số trên của thời điểm giữa quá cảnh",
+    "en": "Upper error of transit midpoint",
+    "type": "numeric"
+  },
+  "pl_tranmiderr2": {
+    "vi": "Sai số dưới của thời điểm giữa quá cảnh",
+    "en": "Lower error of transit midpoint",
+    "type": "numeric"
+  },
+  "pl_tranmidlim": {
+    "vi": "Cờ chỉ ra giới hạn của thời điểm giữa quá cảnh",
+    "en": "Limit flag for transit midpoint",
+    "type": "flag"
+  },
+  "pl_orbper": {
+    "vi": "Chu kỳ quỹ đạo của hành tinh (ngày), thời gian giữa hai lần quá cảnh",
+    "en": "Orbital period of the planet (days), time between two transits",
+    "type": "important"
+  },
+  "pl_orbpererr1": {
+    "vi": "Sai số trên của chu kỳ quỹ đạo",
+    "en": "Upper error of orbital period",
+    "type": "numeric"
+  },
+  "pl_orbpererr2": {
+    "vi": "Sai số dưới của chu kỳ quỹ đạo",
+    "en": "Lower error of orbital period",
+    "type": "numeric"
+  },
+  "pl_orbperlim": {
+    "vi": "Cờ chỉ ra giới hạn của chu kỳ quỹ đạo",
+    "en": "Limit flag for orbital period",
+    "type": "flag"
+  },
+  "pl_trandurh": {
+    "vi": "Thời gian quá cảnh (giờ), thời gian hành tinh che khuất ngôi sao",
+    "en": "Transit duration (hours), time planet obscures the star",
+    "type": "important"
+  },
+  "pl_trandurherr1": {
+    "vi": "Sai số trên của thời gian quá cảnh",
+    "en": "Upper error of transit duration",
+    "type": "numeric"
+  },
+  "pl_trandurherr2": {
+    "vi": "Sai số dưới của thời gian quá cảnh",
+    "en": "Lower error of transit duration",
+    "type": "numeric"
+  },
+  "pl_trandurhlim": {
+    "vi": "Cờ chỉ ra giới hạn của thời gian quá cảnh",
+    "en": "Limit flag for transit duration",
+    "type": "flag"
+  },
+  "pl_trandep": {
+    "vi": "Độ sâu quá cảnh (ppm), mức độ giảm ánh sáng khi hành tinh che ngôi sao",
+    "en": "Transit depth (ppm), brightness decrease when planet obscures star",
+    "type": "important"
+  },
+  "pl_trandeperr1": {
+    "vi": "Sai số trên của độ sâu quá cảnh",
+    "en": "Upper error of transit depth",
+    "type": "numeric"
+  },
+  "pl_trandeperr2": {
+    "vi": "Sai số dưới của độ sâu quá cảnh",
+    "en": "Lower error of transit depth",
+    "type": "numeric"
+  },
+  "pl_trandeplim": {
+    "vi": "Cờ chỉ ra giới hạn của độ sâu quá cảnh",
+    "en": "Limit flag for transit depth",
+    "type": "flag"
+  },
+  "pl_rade": {
+    "vi": "Bán kính hành tinh (so với bán kính Trái Đất)",
+    "en": "Planet radius (relative to Earth radius)",
+    "type": "important"
+  },
+  "pl_radeerr1": {
+    "vi": "Sai số trên của bán kính hành tinh",
+    "en": "Upper error of planet radius",
+    "type": "numeric"
+  },
+  "pl_radeerr2": {
+    "vi": "Sai số dưới của bán kính hành tinh",
+    "en": "Lower error of planet radius",
+    "type": "numeric"
+  },
+  "pl_radelim": {
+    "vi": "Cờ chỉ ra giới hạn của bán kính hành tinh",
+    "en": "Limit flag for planet radius",
+    "type": "flag"
+  },
+  "pl_insol": {
+    "vi": "Dòng bức xạ hành tinh nhận được (so với Trái Đất)",
+    "en": "Insolation flux received by planet (relative to Earth)",
+    "type": "important"
+  },
+  "pl_insolerr1": {
+    "vi": "Sai số trên của dòng bức xạ",
+    "en": "Upper error of insolation flux",
+    "type": "numeric"
+  },
+  "pl_insolerr2": {
+    "vi": "Sai số dưới của dòng bức xạ",
+    "en": "Lower error of insolation flux",
+    "type": "numeric"
+  },
+  "pl_insollim": {
+    "vi": "Cờ chỉ ra giới hạn của dòng bức xạ",
+    "en": "Limit flag for insolation flux",
+    "type": "flag"
+  },
+  "pl_eqt": {
+    "vi": "Nhiệt độ cân bằng của hành tinh (K), dựa trên bức xạ từ ngôi sao",
+    "en": "Planet equilibrium temperature (K), based on stellar radiation",
+    "type": "important"
+  },
+  "pl_eqterr1": {
+    "vi": "Sai số trên của nhiệt độ cân bằng",
+    "en": "Upper error of equilibrium temperature",
+    "type": "numeric"
+  },
+  "pl_eqterr2": {
+    "vi": "Sai số dưới của nhiệt độ cân bằng",
+    "en": "Lower error of equilibrium temperature",
+    "type": "numeric"
+  },
+  "pl_eqtlim": {
+    "vi": "Cờ chỉ ra giới hạn của nhiệt độ cân bằng",
+    "en": "Limit flag for equilibrium temperature",
+    "type": "flag"
+  },
+  "st_tmag": {
+    "vi": "Độ sáng của ngôi sao trong băng TESS (magnitude)",
+    "en": "Star brightness in TESS band (magnitude)",
+    "type": "important"
+  },
+  "st_tmagerr1": {
+    "vi": "Sai số trên của độ sáng TESS",
+    "en": "Upper error of TESS magnitude",
+    "type": "numeric"
+  },
+  "st_tmagerr2": {
+    "vi": "Sai số dưới của độ sáng TESS",
+    "en": "Lower error of TESS magnitude",
+    "type": "numeric"
+  },
+  "st_tmaglim": {
+    "vi": "Cờ chỉ ra giới hạn của độ sáng TESS",
+    "en": "Limit flag for TESS magnitude",
+    "type": "flag"
+  },
+  "st_dist": {
+    "vi": "Khoảng cách từ Trái Đất đến ngôi sao (parsecs)",
+    "en": "Distance to star from Earth (parsecs)",
+    "type": "important"
+  },
+  "st_disterr1": {
+    "vi": "Sai số trên của khoảng cách ngôi sao",
+    "en": "Upper error of stellar distance",
+    "type": "numeric"
+  },
+  "st_disterr2": {
+    "vi": "Sai số dưới của khoảng cách ngôi sao",
+    "en": "Lower error of stellar distance",
+    "type": "numeric"
+  },
+  "st_distlim": {
+    "vi": "Cờ chỉ ra giới hạn của khoảng cách ngôi sao",
+    "en": "Limit flag for stellar distance",
+    "type": "flag"
+  },
+  "st_teff": {
+    "vi": "Nhiệt độ bề mặt của ngôi sao (K)",
+    "en": "Stellar effective temperature (K)",
+    "type": "important"
+  },
+  "st_tefferr1": {
+    "vi": "Sai số trên của nhiệt độ ngôi sao",
+    "en": "Upper error of stellar temperature",
+    "type": "numeric"
+  },
+  "st_tefferr2": {
+    "vi": "Sai số dưới của nhiệt độ ngôi sao",
+    "en": "Lower error of stellar temperature",
+    "type": "numeric"
+  },
+  "st_tefflim": {
+    "vi": "Cờ chỉ ra giới hạn của nhiệt độ ngôi sao",
+    "en": "Limit flag for stellar temperature",
+    "type": "flag"
+  },
+  "st_logg": {
+    "vi": "Trọng lực bề mặt của ngôi sao (log10(cm/s²))",
+    "en": "Stellar surface gravity (log10(cm/s²))",
+    "type": "important"
+  },
+  "st_loggerr1": {
+    "vi": "Sai số trên của trọng lực bề mặt",
+    "en": "Upper error of surface gravity",
+    "type": "numeric"
+  },
+  "st_loggerr2": {
+    "vi": "Sai số dưới của trọng lực bề mặt",
+    "en": "Lower error of surface gravity",
+    "type": "numeric"
+  },
+  "st_logglim": {
+    "vi": "Cờ chỉ ra giới hạn của trọng lực bề mặt",
+    "en": "Limit flag for surface gravity",
+    "type": "flag"
+  },
+  "st_rad": {
+    "vi": "Bán kính ngôi sao (so với bán kính Mặt Trời)",
+    "en": "Stellar radius (relative to Solar radius)",
+    "type": "important"
+  },
+  "st_raderr1": {
+    "vi": "Sai số trên của bán kính ngôi sao",
+    "en": "Upper error of stellar radius",
+    "type": "numeric"
+  },
+  "st_raderr2": {
+    "vi": "Sai số dưới của bán kính ngôi sao",
+    "en": "Lower error of stellar radius",
+    "type": "numeric"
+  },
+  "st_radlim": {
+    "vi": "Cờ chỉ ra giới hạn của bán kính ngôi sao",
+    "en": "Limit flag for stellar radius",
+    "type": "flag"
+  },
+  "toi_created": {
+    "vi": "Ngày tạo bản ghi TOI",
+    "en": "Date when TOI record was created",
+    "type": "must_remove"
+  },
+  "rowupdate": {
+    "vi": "Ngày cập nhật bản ghi",
+    "en": "Date when record was last updated",
+    "type": "must_remove"
+  }
+}
