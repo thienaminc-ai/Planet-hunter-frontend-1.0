@@ -1,12 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
+import BlackHoleScene from './components/BlackHoleScene'; // Adjust the import path as needed
 
 export default function Home() {
   const [language, setLanguage] = useState<'vi' | 'en'>('vi');
   const [rocketPos, setRocketPos] = useState<{ x: number; y: number }>({ x: -100, y: 50 });
-  const [stars, setStars] = useState<{ id: number; width: number; height: number; top: number; left: number; delay: number; duration: number }[]>([]);
+  const [stars, setStars] = useState<
+    { id: number; width: number; height: number; top: number; left: number; delay: number; duration: number }[]
+  >([]);
   const [moonRotation, setMoonRotation] = useState(0);
 
+  // Remove the star generation useEffect since BlackHoleScene handles the background
   useEffect(() => {
     const generatedStars = [...Array(100)].map((_, i) => ({
       id: i,
@@ -77,22 +81,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans relative overflow-hidden">
-      {/* Stars Background */}
-      <div className="fixed inset-0 overflow-hidden z-5">
-        {stars.map(star => (
-          <div
-            key={star.id}
-            className="absolute rounded-full bg-white animate-pulse"
-            style={{
-              width: `${star.width}px`,
-              height: `${star.height}px`,
-              top: `${star.top}%`,
-              left: `${star.left}%`,
-              animationDelay: `${star.delay}s`,
-              animationDuration: `${star.duration}s`
-            }}
-          />
-        ))}
+      {/* Black Hole Background */}
+      <div className="fixed inset-0 z-0">
+        <BlackHoleScene width={typeof window !== 'undefined' ? window.innerWidth : 800} height={typeof window !== 'undefined' ? window.innerHeight : 600} />
       </div>
       
       {/* Rocket - Responsive size */}

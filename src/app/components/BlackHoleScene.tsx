@@ -8,8 +8,7 @@ interface BlackHoleSceneProps {
   height?: number;
 }
 
-// Định nghĩa type mở rộng cho THREE.Points với thuộc tính tùy chỉnh
-interface CustomPoints extends THREE.Points {
+interface StarFieldData {
   originalColors: Float32Array;
   twinklePhase: number;
 }
@@ -21,8 +20,8 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
   const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
-    const currentMount = mountRef.current;
-    if (!currentMount) return;
+    const mount = mountRef.current;
+    if (!mount) return;
 
     // Thiết lập cơ bản
     const WIDTH = width;
@@ -37,9 +36,10 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     renderer.setSize(WIDTH, HEIGHT);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    currentMount.appendChild(renderer.domElement);
+    mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    const clock = new THREE.Clock();
     const camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
     camera.position.set(350, 250, 1200);
     scene.add(camera);
@@ -57,7 +57,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.3);
     scene.add(hemisphereLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
     directionalLight.position.set(20, 10, 10);
     directionalLight.castShadow = true;
     scene.add(directionalLight);
@@ -65,19 +65,30 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     const ambientLight = new THREE.AmbientLight(0x222222);
     scene.add(ambientLight);
 
-    // Black Hole Plane - Original size
+    // Black Hole Group
     const blackHole = new THREE.Group();
+
+    // Central Black Sphere (Tâm hố đen - khối cầu đen đặc)
+    const blackSphereGeometry = new THREE.SphereGeometry(50, 64, 64);
+    const blackSphereMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const blackSphere = new THREE.Mesh(blackSphereGeometry, blackSphereMaterial);
+    blackSphere.position.set(0, 0, 0);
+    blackHole.add(blackSphere);
+
+    // Black Hole Plane - Đĩa tinh vân với texture gốc, mở rộng và nhạt hơn
     const planeLoader = new THREE.TextureLoader();
     const planeTexture = planeLoader.load('https://s3-us-west-2.amazonaws.com/sabrinamarkon-images/images/blackhole7.png');
     const planeMaterial = new THREE.MeshPhongMaterial({ 
       map: planeTexture, 
       side: THREE.DoubleSide,
-      emissive: 0x1a0a00,
-      emissiveIntensity: 0.3
+      emissive: 0x333333, // Màu xám nhạt để ánh sáng tự nhiên từ texture
+      emissiveIntensity: 0.2, // Giảm độ sáng để nhạt hơn
+      transparent: true,
+      opacity: 0.5, // Nhạt hơn để trông thực tế
     });
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(1300, 2000), planeMaterial);
-    plane.rotation.set(-Math.PI / 2, Math.PI / 2000, Math.PI);
-    plane.position.set(-92, -46, 0);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(2000, 3000), planeMaterial);
+    plane.rotation.set(-Math.PI / 2, 0, 0);
+    plane.position.set(0, 0, 0);
     plane.receiveShadow = true;
     blackHole.add(plane);
 
@@ -92,14 +103,13 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
         positions[i * 3 + 1] = (Math.random() - 0.5) * config.range;
         positions[i * 3 + 2] = (Math.random() - 0.5) * config.range;
         
-        // Random color variations - white, blue, yellow, orange, red tints
         const colorVariations = [
-          new THREE.Color(0xffffff), // white
-          new THREE.Color(0xaaccff), // blue-white
-          new THREE.Color(0xffffcc), // yellow-white
-          new THREE.Color(0xffccaa), // orange-white
-          new THREE.Color(0xffaaaa), // red-white
-          new THREE.Color(0xccffff), // cyan-white
+          new THREE.Color(0xffffff),
+          new THREE.Color(0xaaccff),
+          new THREE.Color(0xffffcc),
+          new THREE.Color(0xffccaa),
+          new THREE.Color(0xffaaaa),
+          new THREE.Color(0xccffff),
         ];
         const randomColor = colorVariations[Math.floor(Math.random() * colorVariations.length)];
         const brightness = 0.6 + Math.random() * 0.4;
@@ -108,7 +118,6 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
         colors[i * 3 + 1] = randomColor.g * brightness;
         colors[i * 3 + 2] = randomColor.b * brightness;
         
-        // Varied sizes for more natural look
         sizes[i] = config.size * (0.5 + Math.random() * 1.5);
       }
       
@@ -126,14 +135,18 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
         blending: THREE.AdditiveBlending
       });
       
-      const points = new THREE.Points(geometry, material) as unknown as CustomPoints;
-      points.originalColors = colors.slice();
-      points.twinklePhase = Math.random() * Math.PI * 2;
+      const points = new THREE.Points(geometry, material);
+      
+      // Store custom properties for animation
+      const starData: StarFieldData = {
+        originalColors: colors.slice(),
+        twinklePhase: Math.random() * Math.PI * 2
+      };
+      Object.assign(points, starData);
       
       return points;
     };
 
-    // Multiple star layers for depth with varied colors
     const starField1 = createStarField({ color: 0xffffff, count: 3000, size: 2.5, range: 5000 });
     const starField2 = createStarField({ color: 0xffffaa, count: 2000, size: 1.8, range: 4000 });
     const starField3 = createStarField({ color: 0xaaaaff, count: 1500, size: 1.2, range: 3500 });
@@ -144,7 +157,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     scene.add(starField3);
     scene.add(starField4);
 
-    // Space Junk - Original scale
+    // Space Junk - Giữ nguyên từ phiên bản cũ
     const parametricFunction = (u: number, v: number, target: THREE.Vector3) => {
       const x = -5 + 70 * u;
       const y = (Math.sin(u * Math.PI) + Math.sin(v * Math.PI)) * -7 + 90;
@@ -221,16 +234,19 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     controlsRef.current = controls;
 
     // Animation loop
-    const clock = new THREE.Clock();
     const animate = () => {
       requestAnimationFrame(animate);
       
       const time = clock.getElapsedTime();
       
       // Twinkling star effect
-      const updateStarTwinkle = (starField: CustomPoints) => {
+      const updateStarTwinkle = (starField: THREE.Points) => {
         const colors = starField.geometry.attributes.color.array as Float32Array;
-        const { originalColors, twinklePhase } = starField;
+        const starData = starField as THREE.Points & StarFieldData;
+        const originalColors = starData.originalColors;
+        const twinklePhase = starData.twinklePhase || 0;
+        
+        if (!originalColors) return;
         
         for (let i = 0; i < colors.length; i += 3) {
           const twinkle = Math.sin(time * 2 + twinklePhase + i * 0.01) * 0.3 + 0.7;
@@ -241,7 +257,6 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
         starField.geometry.attributes.color.needsUpdate = true;
       };
       
-      // Apply twinkling to all star fields
       updateStarTwinkle(starField1);
       updateStarTwinkle(starField2);
       updateStarTwinkle(starField3);
@@ -250,17 +265,14 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       // Animate star fields rotation
       starField1.rotation.y += 0.0002;
       starField1.rotation.x += 0.0001;
-      
       starField2.rotation.y -= 0.0003;
       starField2.rotation.z += 0.0001;
-      
       starField3.rotation.y += 0.0004;
       starField3.rotation.x -= 0.0002;
-      
       starField4.rotation.y -= 0.0001;
       starField4.rotation.z -= 0.0001;
       
-      blackHole.rotation.y -= 0.001;
+      blackHole.rotation.y += 0.002;
       spaceJunk.rotation.x -= 0.003;
       cone.rotation.x -= 0.005;
       controls.update();
@@ -270,9 +282,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
 
     // Resize handler
     const handleResize = () => {
-      if (currentMount && camera && renderer) {
-        const newWidth = currentMount.clientWidth;
-        const newHeight = currentMount.clientHeight;
+      if (mount && camera && renderer) {
+        const newWidth = mount.clientWidth;
+        const newHeight = mount.clientHeight;
         camera.aspect = newWidth / newHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(newWidth, newHeight);
@@ -283,8 +295,8 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (rendererRef.current && currentMount) {
-        currentMount.removeChild(rendererRef.current.domElement);
+      if (rendererRef.current && mount) {
+        mount.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
       controlsRef.current?.dispose();
