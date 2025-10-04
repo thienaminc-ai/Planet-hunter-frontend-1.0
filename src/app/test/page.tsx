@@ -1,24 +1,30 @@
 'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { exoplanetAPI, PredictResponse, ListModelsResponse, ModelFeaturesResponse } from '../services/api';
-import type { FieldsExplanation } from '../types'; // Assume you create this type file
 
-// Import JSON files using ES Modules
-import keplerDataRaw from '../../../kepler-fields.json';
-import tessDataRaw from '../../../tess-fields.json';
-import sampleDataRaw from '../../../sample-data.json';
-
-// Type assertions for JSON imports
-const keplerData: Record<string, FieldsExplanation> = keplerDataRaw;
-const tessData: Record<string, FieldsExplanation> = tessDataRaw;
-const sampleData = sampleDataRaw as { kepler: Record<string, number | string>; tess: Record<string, number | string> };
+interface FieldsExplanation {
+  vi: string;
+  en: string;
+  type: string;
+}
 
 interface InputData {
   [key: string]: number | '';
 }
 
 type FieldsData = Record<string, FieldsExplanation>;
+
+interface PredictResult {
+  prediction: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+interface PredictResponse {
+  status: string;
+  message: string;
+  model_name: string;
+  result: PredictResult;
+}
 
 interface RangeConstraints {
   min?: number;
@@ -27,7 +33,6 @@ interface RangeConstraints {
   allowedValues?: number[];
 }
 
-// Define range constraints based on sample data and field types
 const getRangeConstraints = (key: string, dataset: 'kepler' | 'tess', fieldsData: FieldsData, sample: Record<string, number | string>): RangeConstraints => {
   const value = sample[key];
   const fieldInfo = fieldsData[key];
@@ -65,7 +70,7 @@ const getRangeConstraints = (key: string, dataset: 'kepler' | 'tess', fieldsData
 export default function TestPage() {
   const [dataset, setDataset] = useState<'kepler' | 'tess' | null>(null);
   const [language, setLanguage] = useState<'en' | 'vi'>('vi');
-  const [models, setModels] = useState<string[]>([]);
+  const [models] = useState<string[]>(['kepler_demo', 'tess_demo', 'model_v1', 'model_v2']);
   const [selectedModel, setSelectedModel] = useState('');
   const [modelFeatures, setModelFeatures] = useState<string[]>([]);
   const [inputData, setInputData] = useState<InputData>({});
@@ -79,36 +84,48 @@ export default function TestPage() {
   const [hoveredField, setHoveredField] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
+  // Mock data
   const fieldsData: FieldsData = dataset === 'kepler' 
-    ? keplerData 
+    ? {
+        'koi_period': { vi: 'Chu kỳ quỹ đạo', en: 'Orbital period', type: 'numeric' },
+        'koi_depth': { vi: 'Độ sâu quá cảnh', en: 'Transit depth', type: 'numeric' },
+        'koi_duration': { vi: 'Thời gian quá cảnh', en: 'Transit duration', type: 'numeric' },
+        'koi_prad': { vi: 'Bán kính hành tinh', en: 'Planet radius', type: 'numeric' },
+        'koi_teq': { vi: 'Nhiệt độ cân bằng', en: 'Equilibrium temp', type: 'numeric' },
+        'koi_insol': { vi: 'Bức xạ', en: 'Insolation flux', type: 'numeric' },
+      }
     : dataset === 'tess' 
-    ? tessData 
+    ? {
+        'period': { vi: 'Chu kỳ', en: 'Period', type: 'numeric' },
+        'duration': { vi: 'Thời gian', en: 'Duration', type: 'numeric' },
+        'depth': { vi: 'Độ sâu', en: 'Depth', type: 'numeric' },
+        'tmag': { vi: 'Độ sáng', en: 'TESS mag', type: 'numeric' },
+      }
     : {};
 
-  const currentSampleData = sampleData[dataset || 'kepler'];
+  const currentSampleData: Record<string, number | string> = dataset === 'kepler'
+    ? { 'koi_period': 10.5, 'koi_depth': 500, 'koi_duration': 3.2, 'koi_prad': 2.5, 'koi_teq': 800, 'koi_insol': 50 }
+    : dataset === 'tess'
+    ? { 'period': 8.3, 'duration': 2.8, 'depth': 450, 'tmag': 12.5 }
+    : {};
 
-  const getFeatureFields = (sample: Record<string, number | string>, fields: FieldsData) =>
-    Object.keys(sample).filter(
-      key => ['numeric', 'important', 'flag', 'mandatory'].includes(fields[key]?.type || '') && typeof sample[key] === 'number'
-    );
-
-  const featureFields = getFeatureFields(currentSampleData, fieldsData);
+  const featureFields = Object.keys(currentSampleData);
 
   const toggleLanguage = () => setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
 
   const t = {
     title: language === 'vi' ? 'Kiểm thử Mô hình' : 'Model Testing',
-    description: language === 'vi' ? 'Chọn bộ dữ liệu và mô hình để dự đoán hành tinh ngoài.' : 'Select dataset and model to predict exoplanets.',
+    description: language === 'vi' ? 'Chọn bộ dữ liệu và mô hình để dự đoán.' : 'Select dataset and model to predict.',
     testButton: language === 'vi' ? 'Bắt đầu Kiểm thử' : 'Start Testing',
     back: language === 'vi' ? 'Quay lại' : 'Back',
-    preprocess: language === 'vi' ? 'Quay lại: Tiền xử lý' : 'Back to Preprocess',
+    preprocess: language === 'vi' ? 'Tiền xử lý' : 'Preprocess',
     prev: language === 'vi' ? 'Quay lại' : 'Back',
     toggle: language === 'vi' ? 'EN' : 'VI',
     loading: language === 'vi' ? 'Đang dự đoán...' : 'Predicting...',
     selectDatasetTitle: language === 'vi' ? 'Chọn Bộ Dữ Liệu' : 'Select Dataset',
     step1Title: language === 'vi' ? 'Bước 1: Chọn mô hình' : 'Step 1: Select Model',
     step2Title: language === 'vi' ? 'Bước 2: Nhập dữ liệu' : 'Step 2: Input Data',
-    step3Title: language === 'vi' ? 'Bước 3: Kết quả dự đoán' : 'Step 3: Prediction Results',
+    step3Title: language === 'vi' ? 'Bước 3: Kết quả' : 'Step 3: Results',
     modelLabel: language === 'vi' ? 'Mô hình:' : 'Model:',
     modelPlaceholder: language === 'vi' ? 'Chọn mô hình' : 'Select model',
     nextButtonStep1: language === 'vi' ? 'Tiếp theo' : 'Next',
@@ -118,57 +135,28 @@ export default function TestPage() {
     confidence: language === 'vi' ? 'Độ tin cậy:' : 'Confidence:',
     probabilities: language === 'vi' ? 'Xác suất các lớp:' : 'Class Probabilities:',
     noModels: language === 'vi' ? 'Không tìm thấy mô hình.' : 'No models found.',
-    inputLabel: language === 'vi' ? 'Dữ liệu đầu vào (raw - sẽ được xử lý tự động):' : 'Input Data (raw - auto-processed):',
+    inputLabel: language === 'vi' ? 'Dữ liệu đầu vào:' : 'Input Data:',
     totalFields: language === 'vi' ? 'Tổng số trường:' : 'Total fields:',
-    modelUsed: language === 'vi' ? 'Mô hình sử dụng:' : 'Model used:',
+    modelUsed: language === 'vi' ? 'Mô hình:' : 'Model:',
     errorSelect: language === 'vi' ? 'Vui lòng chọn mô hình.' : 'Please select a model.',
-    loadingFeatures: language === 'vi' ? 'Đang tải đặc trưng mô hình...' : 'Loading model features...',
-    invalidInput: language === 'vi' ? 'Giá trị không hợp lệ cho' : 'Invalid value for',
+    loadingFeatures: language === 'vi' ? 'Đang tải...' : 'Loading...',
+    invalidInput: language === 'vi' ? 'Giá trị không hợp lệ' : 'Invalid value',
   };
 
   useEffect(() => {
-    if (dataset) {
-      const fetchModels = async () => {
-        try {
-          const response: ListModelsResponse = await exoplanetAPI.listModels(dataset);
-          if (response.status === 'success' && response.models.length > 0) {
-            setModels(response.models);
-            setSelectedModel(response.models[0]);
-          } else {
-            setModels([`${dataset}_demo`]);
-            setSelectedModel(`${dataset}_demo`);
-            setError(response.message || t.noModels);
-          }
-        } catch (err) {
-          setModels([`${dataset}_demo`]);
-          setSelectedModel(`${dataset}_demo`);
-          setError(err instanceof Error ? err.message : 'Cannot fetch models.');
-        }
-      };
-      fetchModels();
+    if (dataset && models.length > 0) {
+      setSelectedModel(models[0]);
     }
-  }, [dataset, t.noModels]);
+  }, [dataset, models]);
 
   const fetchModelFeatures = async (modelName: string): Promise<boolean> => {
-    if (!dataset) {
-      setError('Dataset not selected.');
-      return false;
-    }
-    const isDemo = modelName === `${dataset}_demo`;
-
+    if (!dataset) return false;
+    
     setLoadingFeatures(true);
     setError(null);
-    try {
-      let features: string[] = [];
-      if (!isDemo) {
-        const response: ModelFeaturesResponse = await exoplanetAPI.modelFeatures({ model_name: modelName, dataset });
-        if (response.status === 'success') {
-          features = response.features || [];
-        }
-      } else {
-        features = featureFields;
-      }
-
+    
+    setTimeout(() => {
+      const features = featureFields;
       setModelFeatures(features);
       const defaults = features.reduce((acc: InputData, featKey: string) => {
         const sampleValue = currentSampleData[featKey];
@@ -176,20 +164,10 @@ export default function TestPage() {
         return acc;
       }, {});
       setInputData(defaults);
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Cannot fetch model features.');
-      setModelFeatures(featureFields);
-      const defaults = featureFields.reduce((acc: InputData, featKey: string) => {
-        const sampleValue = currentSampleData[featKey];
-        acc[featKey] = typeof sampleValue === 'number' ? sampleValue : 0;
-        return acc;
-      }, {});
-      setInputData(defaults);
-      return false;
-    } finally {
       setLoadingFeatures(false);
-    }
+    }, 500);
+    
+    return true;
   };
 
   const handleInputChange = (key: string, value: string) => {
@@ -206,16 +184,16 @@ export default function TestPage() {
     }
 
     if (constraints.allowedValues && !constraints.allowedValues.includes(num)) {
-      setError(`${t.invalidInput} ${key}: Must be ${constraints.allowedValues.join(' or ')}`);
+      setError(`${t.invalidInput} ${key}`);
       return;
     }
 
     if (constraints.min !== undefined && num < constraints.min) {
-      setError(`${t.invalidInput} ${key}: Must be >= ${constraints.min}`);
+      setError(`${t.invalidInput} ${key}`);
       return;
     }
     if (constraints.max !== undefined && num > constraints.max) {
-      setError(`${t.invalidInput} ${key}: Must be <= ${constraints.max}`);
+      setError(`${t.invalidInput} ${key}`);
       return;
     }
 
@@ -224,21 +202,19 @@ export default function TestPage() {
   };
 
   const handlePredict = async () => {
-    if (!dataset) {
-      setError('Dataset not selected.');
-      return;
-    }
-    if (!selectedModel || modelFeatures.length === 0) {
+    if (!dataset || !selectedModel) {
       setError(t.errorSelect);
       return;
     }
 
-    const isDemo = selectedModel === `${dataset}_demo`;
-    if (isDemo) {
+    setLoading(true);
+    setError(null);
+    
+    setTimeout(() => {
       const mockResult: PredictResponse = {
         status: 'success',
-        message: `Mock prediction for ${dataset.toUpperCase()} demo.`,
-        model_name: `${dataset}_demo`,
+        message: 'Prediction successful',
+        model_name: selectedModel,
         result: {
           prediction: 'CONFIRMED',
           confidence: 0.92,
@@ -247,36 +223,8 @@ export default function TestPage() {
       };
       setPredictResult(mockResult);
       setCurrentStep(2);
-      return;
-    }
-
-    const validInput = modelFeatures.reduce((acc, featKey) => {
-      const val = inputData[featKey];
-      acc[featKey] = (val !== '' && typeof val === 'number' && !isNaN(val))
-        ? val
-        : (typeof currentSampleData[featKey] === 'number' ? currentSampleData[featKey] : 0);
-      return acc;
-    }, {} as Record<string, number>);
-
-    setLoading(true);
-    setError(null);
-    try {
-      const result: PredictResponse = await exoplanetAPI.predictModel({
-        model_name: selectedModel,
-        input_data: validInput,
-        dataset,
-      });
-      if (result.status === 'success') {
-        setPredictResult(result);
-        setCurrentStep(2);
-      } else {
-        setError(result.message || 'Prediction failed.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Cannot predict.');
-    } finally {
       setLoading(false);
-    }
+    }, 1500);
   };
 
   const handleNextStep0 = async () => {
@@ -299,7 +247,7 @@ export default function TestPage() {
   };
 
   const getLabel = (key: string): string => {
-    return key; // Short field name for display
+    return key;
   };
 
   const getExplanation = (key: string): string => {
@@ -320,49 +268,53 @@ export default function TestPage() {
   };
 
   const descriptionText = language === 'vi'
-    ? (dataset ? `Chọn mô hình và nhập dữ liệu để dự đoán hành tinh ngoài từ ${dataset.toUpperCase()}.` : 'Chọn bộ dữ liệu để kiểm thử mô hình.')
-    : (dataset ? `Select model and input data for exoplanet prediction from ${dataset?.toUpperCase()}.` : 'Select dataset to test model.');
+    ? (dataset ? `Chọn mô hình và nhập dữ liệu từ ${dataset.toUpperCase()}.` : 'Chọn bộ dữ liệu để kiểm thử.')
+    : (dataset ? `Select model and input data from ${dataset?.toUpperCase()}.` : 'Select dataset to test.');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-white text-gray-800 flex flex-col font-sans relative overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#0000000a_1px,transparent_1px),linear-gradient(to_bottom,#0000000a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none"></div>
 
-      <header className="relative flex justify-between items-center p-4 sm:p-6 bg-white/80 backdrop-blur-md border-b border-gray-200 z-10 shadow-sm">
+      {/* Header - Responsive */}
+      <header className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-6 bg-white/80 backdrop-blur-md border-b border-gray-200 z-10 shadow-sm gap-3 sm:gap-0">
         <div className="flex items-center space-x-2">
-          <span className="text-3xl">🪐</span>
-          <h2 className="text-2xl font-bold text-orange-600">{dataset ? `${dataset.toUpperCase()} Exoplanet Hunter` : 'Exoplanet Hunter'}</h2>
+          <span className="text-2xl sm:text-3xl">🪐</span>
+          <h2 className="text-lg sm:text-2xl font-bold text-orange-600 truncate">
+            {dataset ? `${dataset.toUpperCase()} Hunter` : 'Exoplanet Hunter'}
+          </h2>
         </div>
-        <div className="flex items-center space-x-4">
-          <Link href="/" className="text-orange-500 hover:text-orange-700 font-medium transition-colors">
+        <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto">
+          <button className="text-orange-500 hover:text-orange-700 font-medium transition-colors text-sm sm:text-base">
             {t.back}
-          </Link>
-          <Link href={`/preprocess?dataset=${dataset || 'kepler'}`} className="text-orange-500 hover:text-orange-700 font-medium transition-colors">
+          </button>
+          <button className="text-orange-500 hover:text-orange-700 font-medium transition-colors text-sm sm:text-base">
             {t.preprocess}
-          </Link>
+          </button>
           <button
             onClick={toggleLanguage}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300 text-sm font-medium shadow-md"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-300 text-xs sm:text-sm font-medium shadow-md"
           >
             {t.toggle}
           </button>
         </div>
       </header>
 
-      <main className="relative flex-1 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 z-10">
-        <div className="text-center mb-8 max-w-2xl">
-          <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-400 bg-clip-text text-transparent">
+      {/* Main Content - Responsive */}
+      <main className="relative flex-1 flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 z-10">
+        <div className="text-center mb-6 sm:mb-8 max-w-2xl">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-3 sm:mb-4 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-400 bg-clip-text text-transparent">
             {t.title}
           </h1>
-          <p className="text-lg text-gray-600">
+          <p className="text-base sm:text-lg text-gray-600 px-4">
             {descriptionText}
           </p>
         </div>
 
-        <div className="w-full max-w-md space-y-6">
+        <div className="w-full max-w-md space-y-4 sm:space-y-6 px-4">
           <button
             onClick={() => setShowDatasetModal(true)}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 text-xl font-semibold shadow-lg disabled:opacity-50 flex items-center justify-center"
+            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-3 sm:py-4 rounded-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 text-lg sm:text-xl font-semibold shadow-lg disabled:opacity-50 flex items-center justify-center"
           >
             {loading ? (
               <>
@@ -375,25 +327,26 @@ export default function TestPage() {
           </button>
 
           {error && (
-            <div className="p-4 bg-orange-100 border border-orange-300 rounded-lg text-orange-600 text-center font-medium text-sm">
+            <div className="p-3 sm:p-4 bg-orange-100 border border-orange-300 rounded-lg text-orange-600 text-center font-medium text-xs sm:text-sm">
               {error}
             </div>
           )}
         </div>
       </main>
 
+      {/* Dataset Selection Modal - Responsive */}
       {showDatasetModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-2xl flex flex-col items-center shadow-2xl">
-            <h2 className="text-3xl font-bold text-gray-800 mb-8">{t.selectDatasetTitle}</h2>
-            <div className="grid grid-cols-2 gap-6 w-full">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 w-full max-w-2xl flex flex-col items-center shadow-2xl">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 sm:mb-8">{t.selectDatasetTitle}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full">
               <button
                 onClick={() => {
                   setDataset('kepler');
                   setShowDatasetModal(false);
                   setShowStepModal(true);
                 }}
-                className="bg-gradient-to-br from-orange-400 to-amber-500 text-white px-8 py-12 rounded-xl hover:from-orange-500 hover:to-amber-600 transition-all duration-300 text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="bg-gradient-to-br from-orange-400 to-amber-500 text-white px-6 py-10 sm:px-8 sm:py-12 rounded-xl hover:from-orange-500 hover:to-amber-600 transition-all duration-300 text-xl sm:text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 Kepler
               </button>
@@ -403,14 +356,14 @@ export default function TestPage() {
                   setShowDatasetModal(false);
                   setShowStepModal(true);
                 }}
-                className="bg-gradient-to-br from-amber-400 to-orange-500 text-white px-8 py-12 rounded-xl hover:from-amber-500 hover:to-orange-600 transition-all duration-300 text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="bg-gradient-to-br from-amber-400 to-orange-500 text-white px-6 py-10 sm:px-8 sm:py-12 rounded-xl hover:from-amber-500 hover:to-orange-600 transition-all duration-300 text-xl sm:text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
               >
                 TESS
               </button>
             </div>
             <button
               onClick={() => setShowDatasetModal(false)}
-              className="mt-8 px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-all text-sm font-semibold"
+              className="mt-6 sm:mt-8 px-4 sm:px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-all text-sm font-semibold"
             >
               {t.closeButton}
             </button>
@@ -418,36 +371,38 @@ export default function TestPage() {
         </div>
       )}
 
+      {/* Step Modal - Responsive */}
       {showStepModal && dataset && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-hidden" onClick={(e) => e.target === e.currentTarget && handleCloseModal()}>
-          <div className="bg-white rounded-2xl w-full max-w-7xl max-h-[90vh] flex flex-col shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4 overflow-hidden">
+          <div className="bg-white rounded-xl sm:rounded-2xl w-full max-w-7xl max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl relative">
             <div className="flex-1 overflow-y-auto">
-              <div className="p-8">
-                <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200">
+              <div className="p-4 sm:p-8">
+                {/* Header - Responsive */}
+                <div className="flex justify-between items-center mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-gray-200">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">
+                    <h2 className="text-lg sm:text-2xl font-bold text-gray-800">
                       {currentStep === 0 ? t.step1Title : currentStep === 1 ? t.step2Title : t.step3Title}
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">Bước {currentStep + 1}/3</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Bước {currentStep + 1}/3</p>
                   </div>
                   <button
                     onClick={handleCloseModal}
-                    className="text-gray-500 hover:text-gray-700 text-3xl font-bold transition-colors"
+                    className="text-gray-500 hover:text-gray-700 text-2xl sm:text-3xl font-bold transition-colors"
                   >
                     ×
                   </button>
                 </div>
 
+                {/* Step 0 - Model Selection */}
                 {currentStep === 0 && (
-                  <div className="w-full flex flex-col items-center py-8 bg-gray-50 rounded-xl">
-                    <div className="text-5xl mb-6">🔭</div>
-                    <div className="w-full max-w-2xl p-6 bg-white rounded-xl border border-gray-200 shadow-md">
-                      <label className="block text-lg font-semibold mb-4 text-gray-800">{t.modelLabel}</label>
+                  <div className="w-full flex flex-col items-center py-6 sm:py-8 bg-gray-50 rounded-xl">
+                    <div className="text-4xl sm:text-5xl mb-4 sm:mb-6">🔭</div>
+                    <div className="w-full max-w-2xl p-4 sm:p-6 bg-white rounded-xl border border-gray-200 shadow-md">
+                      <label className="block text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">{t.modelLabel}</label>
                       <select
                         value={selectedModel}
                         onChange={(e) => setSelectedModel(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-800 text-base"
-                        disabled={models.length === 0}
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-800 text-sm sm:text-base"
                       >
                         <option value="">{t.modelPlaceholder}</option>
                         {models.map((model) => (
@@ -456,98 +411,90 @@ export default function TestPage() {
                           </option>
                         ))}
                       </select>
-                      {models.length === 0 && (
-                        <div className="mt-4 text-sm text-orange-500 text-center">{t.noModels}</div>
-                      )}
                     </div>
                   </div>
                 )}
 
+                {/* Step 1 - Input Data - Responsive Grid */}
                 {currentStep === 1 && (
-                  <div className="w-full flex flex-col items-center py-8 bg-gray-50 rounded-xl">
-                    <div className="text-5xl mb-6">📡</div>
-                    <div className="w-full max-w-6xl p-6 bg-white rounded-xl border border-gray-200 shadow-md space-y-6">
-                      <label className="block text-lg font-semibold mb-4 text-gray-800">{t.inputLabel}</label>
-                      <div className="text-sm text-gray-600 text-center">
+                  <div className="w-full flex flex-col items-center py-6 sm:py-8 bg-gray-50 rounded-xl">
+                    <div className="text-4xl sm:text-5xl mb-4 sm:mb-6">📡</div>
+                    <div className="w-full max-w-6xl p-4 sm:p-6 bg-white rounded-xl border border-gray-200 shadow-md space-y-4 sm:space-y-6">
+                      <label className="block text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-800">{t.inputLabel}</label>
+                      <div className="text-xs sm:text-sm text-gray-600 text-center">
                         <strong>{t.totalFields}</strong> {modelFeatures.length}
                       </div>
-                      {modelFeatures.length === 0 ? (
-                        <div className="text-center text-orange-500">{t.noModels}</div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pr-2">
-                          {modelFeatures.map((featKey) => {
-                            const isHovered = hoveredField === featKey;
-                            const isFocused = focusedField === featKey;
-                            const constraints = getRangeConstraints(featKey, dataset, fieldsData, currentSampleData);
-                            const explanation = getExplanation(featKey);
-                            const currentValue = inputData[featKey];
-                            const showExplanation = !isFocused && isHovered;
-                            return (
-                              <div key={featKey} className="space-y-3 relative">
-                                <label
-                                  className="block text-sm font-semibold text-gray-700 truncate"
-                                  style={{ lineHeight: '1.4em', maxHeight: '2.8em', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                                >
-                                  {getLabel(featKey)}
-                                </label>
-                                <div 
-                                  className={`relative w-full ${showExplanation ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800'}`}
-                                  onMouseEnter={() => setHoveredField(featKey)}
-                                  onMouseLeave={() => setHoveredField(null)}
-                                >
-                                  {showExplanation ? (
-                                    <div 
-                                      className="w-full px-4 py-3 rounded-lg text-sm cursor-pointer select-none text-center leading-relaxed"
-                                      onClick={() => setFocusedField(featKey)}
-                                    >
-                                      {explanation}
-                                    </div>
-                                  ) : (
-                                    <input
-                                      type="number"
-                                      step={constraints.step || 'any'}
-                                      min={constraints.min}
-                                      max={constraints.max}
-                                      value={isFocused ? (currentValue === '' ? '' : String(currentValue || 0)) : ''}
-                                      onChange={(e) => handleInputChange(featKey, e.target.value)}
-                                      onFocus={() => setFocusedField(featKey)}
-                                      onBlur={() => setFocusedField(null)}
-                                      placeholder={String(currentSampleData[featKey] || 0)}
-                                      className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-base"
-                                    />
-                                  )}
-                                </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        {modelFeatures.map((featKey) => {
+                          const isHovered = hoveredField === featKey;
+                          const isFocused = focusedField === featKey;
+                          const constraints = getRangeConstraints(featKey, dataset, fieldsData, currentSampleData);
+                          const explanation = getExplanation(featKey);
+                          const currentValue = inputData[featKey];
+                          const showExplanation = !isFocused && isHovered;
+                          return (
+                            <div key={featKey} className="space-y-2 sm:space-y-3 relative">
+                              <label className="block text-xs sm:text-sm font-semibold text-gray-700 truncate">
+                                {getLabel(featKey)}
+                              </label>
+                              <div 
+                                className={`relative w-full ${showExplanation ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-800'}`}
+                                onMouseEnter={() => setHoveredField(featKey)}
+                                onMouseLeave={() => setHoveredField(null)}
+                              >
+                                {showExplanation ? (
+                                  <div 
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-lg text-xs sm:text-sm cursor-pointer select-none text-center leading-relaxed"
+                                    onClick={() => setFocusedField(featKey)}
+                                  >
+                                    {explanation}
+                                  </div>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    step={constraints.step || 'any'}
+                                    min={constraints.min}
+                                    max={constraints.max}
+                                    value={isFocused ? (currentValue === '' ? '' : String(currentValue || 0)) : ''}
+                                    onChange={(e) => handleInputChange(featKey, e.target.value)}
+                                    onFocus={() => setFocusedField(featKey)}
+                                    onBlur={() => setFocusedField(null)}
+                                    placeholder={String(currentSampleData[featKey] || 0)}
+                                    className="w-full px-3 py-2 sm:px-4 sm:py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm sm:text-base"
+                                  />
+                                )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
 
+                {/* Step 2 - Results - Responsive */}
                 {currentStep === 2 && predictResult && (
-                  <div className="w-full flex flex-col items-center py-8 bg-gray-50 rounded-xl">
-                    <div className="text-5xl mb-6">✅</div>
-                    <div className="w-full max-w-5xl p-6 bg-white rounded-xl border border-gray-200 shadow-md space-y-6">
-                      <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">{t.step3Title}</h3>
-                      <div className="bg-gradient-to-br from-green-400 to-teal-500 text-white p-6 rounded-xl text-center shadow-md">
-                        <p className="text-sm opacity-90">{t.prediction}</p>
-                        <p className="text-3xl font-bold mt-1">{predictResult.result.prediction}</p>
-                        <p className="text-sm opacity-90 mt-1">{t.confidence} {(predictResult.result.confidence * 100).toFixed(2)}%</p>
+                  <div className="w-full flex flex-col items-center py-6 sm:py-8 bg-gray-50 rounded-xl">
+                    <div className="text-4xl sm:text-5xl mb-4 sm:mb-6">✅</div>
+                    <div className="w-full max-w-5xl p-4 sm:p-6 bg-white rounded-xl border border-gray-200 shadow-md space-y-4 sm:space-y-6">
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4 text-center">{t.step3Title}</h3>
+                      <div className="bg-gradient-to-br from-green-400 to-teal-500 text-white p-4 sm:p-6 rounded-xl text-center shadow-md">
+                        <p className="text-xs sm:text-sm opacity-90">{t.prediction}</p>
+                        <p className="text-2xl sm:text-3xl font-bold mt-1">{predictResult.result.prediction}</p>
+                        <p className="text-xs sm:text-sm opacity-90 mt-1">{t.confidence} {(predictResult.result.confidence * 100).toFixed(2)}%</p>
                       </div>
-                      <div className="bg-gray-100 p-4 rounded-lg border border-gray-200">
-                        <strong className="text-orange-600 mb-2 block">{t.probabilities}</strong>
-                        <ul className="space-y-2 text-sm text-gray-600">
+                      <div className="bg-gray-100 p-3 sm:p-4 rounded-lg border border-gray-200">
+                        <strong className="text-orange-600 mb-2 block text-sm sm:text-base">{t.probabilities}</strong>
+                        <ul className="space-y-2 text-xs sm:text-sm text-gray-600">
                           {Object.entries(predictResult.result.probabilities)
                             .sort(([, a], [, b]) => b - a)
                             .map(([cls, prob]) => (
-                              <li key={cls} className="flex justify-between items-center p-3 bg-white rounded-lg">
+                              <li key={cls} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 sm:p-3 bg-white rounded-lg gap-2">
                                 <span className="font-medium">{cls}</span>
-                                <div className="flex items-center space-x-3">
-                                  <div className="w-20 bg-gray-200 rounded-full h-3">
+                                <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
+                                  <div className="flex-1 sm:w-20 bg-gray-200 rounded-full h-2 sm:h-3">
                                     <div
-                                      className="bg-green-400 rounded-full h-3"
+                                      className="bg-green-400 rounded-full h-2 sm:h-3"
                                       style={{ width: `${prob * 100}%` }}
                                     ></div>
                                   </div>
@@ -557,15 +504,13 @@ export default function TestPage() {
                             ))}
                         </ul>
                       </div>
-                      <div className="text-center mt-4 text-gray-600">
-                        <strong className="text-orange-600 text-lg">{t.modelUsed}</strong> {predictResult.model_name}
+                      <div className="text-center mt-3 sm:mt-4 text-gray-600">
+                        <strong className="text-orange-600 text-base sm:text-lg">{t.modelUsed}</strong> {predictResult.model_name}
                       </div>
                       <div className="text-center">
-                        <Link href={`/preprocess?dataset=${dataset}`}>
-                          <button className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all text-sm font-semibold shadow-md">
-                            {t.preprocess}
-                          </button>
-                        </Link>
+                        <button className="px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all text-xs sm:text-sm font-semibold shadow-md">
+                          {t.preprocess}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -573,59 +518,63 @@ export default function TestPage() {
               </div>
             </div>
 
-            {/* Fixed Footer */}
-            <div className="bg-white border-t border-gray-200 px-8 py-4 flex justify-between items-center shrink-0">
+            {/* Fixed Footer - Responsive */}
+            <div className="bg-white border-t border-gray-200 px-4 sm:px-8 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 shrink-0">
               <button
                 onClick={currentStep > 0 ? handlePrevStep : handleCloseModal}
-                className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-all text-sm font-semibold shadow-md"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition-all text-xs sm:text-sm font-semibold shadow-md"
               >
                 ← {t.prev}
               </button>
 
               {error && (
-                <div className="px-4 py-2 bg-orange-100 border border-orange-300 rounded-lg text-orange-600 text-sm font-medium">
+                <div className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-orange-100 border border-orange-300 rounded-lg text-orange-600 text-xs sm:text-sm font-medium text-center">
                   {error}
                 </div>
               )}
 
-              {currentStep === 0 ? (
-                <button
-                  onClick={handleNextStep0}
-                  disabled={!selectedModel || loadingFeatures}
-                  className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-semibold shadow-md flex items-center"
-                >
-                  {loadingFeatures ? (
-                    <>
-                      <span className="mr-2 animate-spin">⏳</span>
-                      {t.loadingFeatures}
-                    </>
-                  ) : (
-                    `${t.nextButtonStep1} →`
-                  )}
-                </button>
-              ) : currentStep === 1 ? (
-                <button
-                  onClick={handlePredict}
-                  disabled={loading || modelFeatures.length === 0}
-                  className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-semibold shadow-md flex items-center"
-                >
-                  {loading ? (
-                    <>
-                      <span className="mr-2 animate-spin">⏳</span>
-                      {t.loading}
-                    </>
-                  ) : (
-                    `${t.predictButtonStep2} 🔮`
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={handleCloseModal}
-                  className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all text-sm font-semibold shadow-md"
-                >
-                  {t.closeButton}
-                </button>
-              )}
+              <div className="w-full sm:w-auto">
+                {currentStep === 0 && (
+                  <button
+                    onClick={handleNextStep0}
+                    disabled={!selectedModel || loadingFeatures}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs sm:text-sm font-semibold shadow-md flex items-center justify-center"
+                  >
+                    {loadingFeatures ? (
+                      <>
+                        <span className="mr-2 animate-spin">⏳</span>
+                        {t.loadingFeatures}
+                      </>
+                    ) : (
+                      `${t.nextButtonStep1} →`
+                    )}
+                  </button>
+                )}
+                {currentStep === 1 && (
+                  <button
+                    onClick={handlePredict}
+                    disabled={loading || modelFeatures.length === 0}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs sm:text-sm font-semibold shadow-md flex items-center justify-center"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="mr-2 animate-spin">⏳</span>
+                        {t.loading}
+                      </>
+                    ) : (
+                      `${t.predictButtonStep2} 🔮`
+                    )}
+                  </button>
+                )}
+                {currentStep === 2 && (
+                  <button
+                    onClick={handleCloseModal}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all text-xs sm:text-sm font-semibold shadow-md"
+                  >
+                    {t.closeButton}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
