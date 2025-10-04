@@ -8,6 +8,12 @@ interface BlackHoleSceneProps {
   height?: number;
 }
 
+// Định nghĩa type mở rộng cho THREE.Points với thuộc tính tùy chỉnh
+interface CustomPoints extends THREE.Points {
+  originalColors: Float32Array;
+  twinklePhase: number;
+}
+
 export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleSceneProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -15,7 +21,8 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
   const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
-    if (!mountRef.current) return;
+    const currentMount = mountRef.current;
+    if (!currentMount) return;
 
     // Thiết lập cơ bản
     const WIDTH = width;
@@ -30,7 +37,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     renderer.setSize(WIDTH, HEIGHT);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    mountRef.current.appendChild(renderer.domElement);
+    currentMount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
@@ -119,10 +126,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
         blending: THREE.AdditiveBlending
       });
       
-      const points = new THREE.Points(geometry, material);
-      // Store original colors for twinkling effect
-      (points as any).originalColors = colors.slice();
-      (points as any).twinklePhase = Math.random() * Math.PI * 2;
+      const points = new THREE.Points(geometry, material) as unknown as CustomPoints;
+      points.originalColors = colors.slice();
+      points.twinklePhase = Math.random() * Math.PI * 2;
       
       return points;
     };
@@ -222,10 +228,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       const time = clock.getElapsedTime();
       
       // Twinkling star effect
-      const updateStarTwinkle = (starField: THREE.Points) => {
+      const updateStarTwinkle = (starField: CustomPoints) => {
         const colors = starField.geometry.attributes.color.array as Float32Array;
-        const originalColors = (starField as unknown as { originalColors: Float32Array; twinklePhase: number }).originalColors;
-        const twinklePhase = (starField as unknown as { originalColors: Float32Array; twinklePhase: number }).twinklePhase;
+        const { originalColors, twinklePhase } = starField;
         
         for (let i = 0; i < colors.length; i += 3) {
           const twinkle = Math.sin(time * 2 + twinklePhase + i * 0.01) * 0.3 + 0.7;
@@ -265,9 +270,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
 
     // Resize handler
     const handleResize = () => {
-      if (mountRef.current && camera && renderer) {
-        const newWidth = mountRef.current.clientWidth;
-        const newHeight = mountRef.current.clientHeight;
+      if (currentMount && camera && renderer) {
+        const newWidth = currentMount.clientWidth;
+        const newHeight = currentMount.clientHeight;
         camera.aspect = newWidth / newHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(newWidth, newHeight);
@@ -278,8 +283,8 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (rendererRef.current) {
-        mountRef.current?.removeChild(rendererRef.current.domElement);
+      if (rendererRef.current && currentMount) {
+        currentMount.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
       controlsRef.current?.dispose();
