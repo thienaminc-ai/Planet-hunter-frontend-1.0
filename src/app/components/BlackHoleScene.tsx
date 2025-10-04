@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -16,8 +15,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
   const controlsRef = useRef<OrbitControls | null>(null);
 
   useEffect(() => {
-    const currentMount = mountRef.current;
-    if (!currentMount) return;
+    if (!mountRef.current) return;
 
     // Thiết lập cơ bản
     const WIDTH = width;
@@ -32,11 +30,11 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     renderer.setSize(WIDTH, HEIGHT);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    currentMount.appendChild(renderer.domElement);
+    mountRef.current.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
-    camera.position.set(0, 800, 2500);
+    camera.position.set(350, 250, 1200);
     scene.add(camera);
 
     // Controls
@@ -60,35 +58,21 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     const ambientLight = new THREE.AmbientLight(0x222222);
     scene.add(ambientLight);
 
-    // Black Hole Group - Gargantua style with sphere and accretion disk
+    // Black Hole Plane - Original size
     const blackHole = new THREE.Group();
-    
-    // Central Black Hole Sphere (Event Horizon) - perfectly black
-    const sphereGeometry = new THREE.SphereGeometry(300, 64, 64);
-    const sphereMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0x000000,
-      transparent: false
-    });
-    const blackHoleSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    blackHoleSphere.position.set(0, 0, 0);
-    blackHole.add(blackHoleSphere);
-
-    // Accretion Disk (vòng xoáy tinh vân)
     const planeLoader = new THREE.TextureLoader();
     const planeTexture = planeLoader.load('https://s3-us-west-2.amazonaws.com/sabrinamarkon-images/images/blackhole7.png');
     const planeMaterial = new THREE.MeshPhongMaterial({ 
       map: planeTexture, 
       side: THREE.DoubleSide,
-      emissive: 0xff6600,
-      emissiveIntensity: 0.4,
-      transparent: true,
-      opacity: 0.95
+      emissive: 0x1a0a00,
+      emissiveIntensity: 0.3
     });
-    const accretionDisk = new THREE.Mesh(new THREE.PlaneGeometry(3500, 3500), planeMaterial);
-    accretionDisk.rotation.set(-Math.PI / 2, 0, 0);
-    accretionDisk.position.set(0, 0, 0);
-    accretionDisk.receiveShadow = true;
-    blackHole.add(accretionDisk);
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(1300, 2000), planeMaterial);
+    plane.rotation.set(-Math.PI / 2, Math.PI / 2000, Math.PI);
+    plane.position.set(-92, -46, 0);
+    plane.receiveShadow = true;
+    blackHole.add(plane);
 
     // Enhanced Star Fields with twinkling colors
     const createStarField = (config: { color: number; count: number; size: number; range: number }) => {
@@ -136,8 +120,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       });
       
       const points = new THREE.Points(geometry, material);
-      (points as unknown as { originalColors: Float32Array; twinklePhase: number }).originalColors = colors.slice();
-      (points as unknown as { originalColors: Float32Array; twinklePhase: number }).twinklePhase = Math.random() * Math.PI * 2;
+      // Store original colors for twinkling effect
+      (points as any).originalColors = colors.slice();
+      (points as any).twinklePhase = Math.random() * Math.PI * 2;
       
       return points;
     };
@@ -153,11 +138,11 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     scene.add(starField3);
     scene.add(starField4);
 
-    // Space Junk - scaled up to match Gargantua
+    // Space Junk - Original scale
     const parametricFunction = (u: number, v: number, target: THREE.Vector3) => {
-      const x = -50 + 200 * u;
-      const y = (Math.sin(u * Math.PI) + Math.sin(v * Math.PI)) * -20 + 200;
-      const z = -50 + 200 * v;
+      const x = -5 + 70 * u;
+      const y = (Math.sin(u * Math.PI) + Math.sin(v * Math.PI)) * -7 + 90;
+      const z = -5 + 70 * v;
       target.set(x, y, z);
     };
     
@@ -205,12 +190,12 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       shininess: 5
     });
     const spaceJunk = new THREE.Mesh(parametricGeometry, paraMaterial);
-    spaceJunk.position.set(400, 150, 600);
-    spaceJunk.scale.set(3, 3, 3);
+    spaceJunk.position.set(150, 50, 200);
+    spaceJunk.scale.set(2.5, 2.5, 2.5);
     spaceJunk.castShadow = true;
     blackHole.add(spaceJunk);
 
-    const coneGeometry = new THREE.CylinderGeometry(0, 80, 200, 200, 80, false);
+    const coneGeometry = new THREE.CylinderGeometry(0, 60, 140, 200, 80, false);
     const spaceJunkTexture2 = spaceJunkLoader.load('https://s3-us-west-2.amazonaws.com/sabrinamarkon-images/images/spacejunk2.jpg');
     const coneMaterial = new THREE.MeshPhongMaterial({
       map: spaceJunkTexture2,
@@ -219,8 +204,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       shininess: 5
     });
     const cone = new THREE.Mesh(coneGeometry, coneMaterial);
-    cone.position.set(400, 150, 600);
-    cone.scale.set(2, 2, 2);
+    cone.position.set(150, 50, 200);
     blackHole.add(cone);
 
     scene.add(blackHole);
@@ -231,10 +215,34 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     controlsRef.current = controls;
 
     // Animation loop
+    const clock = new THREE.Clock();
     const animate = () => {
       requestAnimationFrame(animate);
       
-      // Animate star fields and black hole components
+      const time = clock.getElapsedTime();
+      
+      // Twinkling star effect
+      const updateStarTwinkle = (starField: THREE.Points) => {
+        const colors = starField.geometry.attributes.color.array as Float32Array;
+        const originalColors = (starField as unknown as { originalColors: Float32Array; twinklePhase: number }).originalColors;
+        const twinklePhase = (starField as unknown as { originalColors: Float32Array; twinklePhase: number }).twinklePhase;
+        
+        for (let i = 0; i < colors.length; i += 3) {
+          const twinkle = Math.sin(time * 2 + twinklePhase + i * 0.01) * 0.3 + 0.7;
+          colors[i] = originalColors[i] * twinkle;
+          colors[i + 1] = originalColors[i + 1] * twinkle;
+          colors[i + 2] = originalColors[i + 2] * twinkle;
+        }
+        starField.geometry.attributes.color.needsUpdate = true;
+      };
+      
+      // Apply twinkling to all star fields
+      updateStarTwinkle(starField1);
+      updateStarTwinkle(starField2);
+      updateStarTwinkle(starField3);
+      updateStarTwinkle(starField4);
+      
+      // Animate star fields rotation
       starField1.rotation.y += 0.0002;
       starField1.rotation.x += 0.0001;
       
@@ -247,9 +255,7 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
       starField4.rotation.y -= 0.0001;
       starField4.rotation.z -= 0.0001;
       
-      // Rotate accretion disk (vòng xoáy)
-      accretionDisk.rotation.z += 0.0008;
-      
+      blackHole.rotation.y -= 0.001;
       spaceJunk.rotation.x -= 0.003;
       cone.rotation.x -= 0.005;
       controls.update();
@@ -259,9 +265,9 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
 
     // Resize handler
     const handleResize = () => {
-      if (currentMount && camera && renderer) {
-        const newWidth = currentMount.clientWidth;
-        const newHeight = currentMount.clientHeight;
+      if (mountRef.current && camera && renderer) {
+        const newWidth = mountRef.current.clientWidth;
+        const newHeight = mountRef.current.clientHeight;
         camera.aspect = newWidth / newHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(newWidth, newHeight);
@@ -272,8 +278,8 @@ export default function BlackHoleScene({ width = 800, height = 600 }: BlackHoleS
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (rendererRef.current && currentMount) {
-        currentMount.removeChild(rendererRef.current.domElement);
+      if (rendererRef.current) {
+        mountRef.current?.removeChild(rendererRef.current.domElement);
         rendererRef.current.dispose();
       }
       controlsRef.current?.dispose();
