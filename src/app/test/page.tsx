@@ -1,547 +1,477 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { exoplanetAPI, PredictResponse, ListModelsResponse, ModelFeaturesResponse } from '../services/api';
-import keplerData from '../../../kepler-fields.json';
-import tessData from '../../../tess-fields.json';
-import sampleData from '../../../sample-data.json'; // Import file JSON chứa sample cho cả kepler và tess
 
+// Types
 interface InputData {
-  [key: string]: number | '';
+  [key: string]: number;
 }
 
-interface FieldsExplanation {
+interface FieldExplanation {
   vi: string;
   en: string;
   type: string;
 }
 
-type FieldsData = Record<string, FieldsExplanation>;
+type FieldsData = Record<string, FieldExplanation>;
+
+interface PredictResult {
+  prediction: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+// Mock data dictionaries
+const keplerFields: FieldsData = {
+  koi_score: { vi: 'Điểm tin cậy (0-1)', en: 'Confidence score (0-1)', type: 'numeric' },
+  koi_fpflag_nt: { vi: 'Cờ không phải quá cảnh', en: 'Not transit flag', type: 'flag' },
+  koi_fpflag_ss: { vi: 'Cờ nhật thực sao', en: 'Stellar eclipse flag', type: 'flag' },
+  koi_fpflag_co: { vi: 'Cờ lệch tâm', en: 'Centroid offset flag', type: 'flag' },
+  koi_fpflag_ec: { vi: 'Cờ nhiễu ephemeris', en: 'Ephemeris match flag', type: 'flag' },
+  koi_period: { vi: 'Chu kỳ quỹ đạo (ngày)', en: 'Orbital period (days)', type: 'important' },
+  koi_impact: { vi: 'Tham số va chạm', en: 'Impact parameter', type: 'important' },
+  koi_duration: { vi: 'Thời gian quá cảnh (giờ)', en: 'Transit duration (hours)', type: 'important' },
+  koi_depth: { vi: 'Độ sâu quá cảnh (ppm)', en: 'Transit depth (ppm)', type: 'important' },
+  koi_prad: { vi: 'Bán kính hành tinh (so với Trái Đất)', en: 'Planet radius (Earth radii)', type: 'important' },
+  koi_teq: { vi: 'Nhiệt độ cân bằng (K)', en: 'Equilibrium temperature (K)', type: 'important' },
+  koi_insol: { vi: 'Dòng bức xạ (so với Trái Đất)', en: 'Insolation flux (Earth flux)', type: 'important' },
+  koi_steff: { vi: 'Nhiệt độ ngôi sao (K)', en: 'Stellar temperature (K)', type: 'important' },
+  koi_slogg: { vi: 'Trọng lực bề mặt sao', en: 'Stellar surface gravity', type: 'important' },
+  koi_srad: { vi: 'Bán kính sao (so với Mặt Trời)', en: 'Stellar radius (Solar radii)', type: 'important' },
+};
+
+const tessFields: FieldsData = {
+  pl_orbper: { vi: 'Chu kỳ quỹ đạo (ngày)', en: 'Orbital period (days)', type: 'important' },
+  pl_trandurh: { vi: 'Thời gian quá cảnh (giờ)', en: 'Transit duration (hours)', type: 'important' },
+  pl_trandep: { vi: 'Độ sâu quá cảnh (ppm)', en: 'Transit depth (ppm)', type: 'important' },
+  pl_rade: { vi: 'Bán kính hành tinh (so với Trái Đất)', en: 'Planet radius (Earth radii)', type: 'important' },
+  pl_insol: { vi: 'Dòng bức xạ (so với Trái Đất)', en: 'Insolation flux (Earth flux)', type: 'important' },
+  pl_eqt: { vi: 'Nhiệt độ cân bằng (K)', en: 'Equilibrium temperature (K)', type: 'important' },
+  st_tmag: { vi: 'Độ sáng TESS (magnitude)', en: 'TESS magnitude', type: 'important' },
+  st_dist: { vi: 'Khoảng cách (parsecs)', en: 'Distance (parsecs)', type: 'important' },
+  st_teff: { vi: 'Nhiệt độ ngôi sao (K)', en: 'Stellar temperature (K)', type: 'important' },
+  st_logg: { vi: 'Trọng lực bề mặt sao', en: 'Stellar surface gravity', type: 'important' },
+  st_rad: { vi: 'Bán kính sao (so với Mặt Trời)', en: 'Stellar radius (Solar radii)', type: 'important' },
+};
+
+// Validation ranges
+const fieldRanges: Record<string, { min: number; max: number; step?: number }> = {
+  // Flags
+  koi_fpflag_nt: { min: 0, max: 1, step: 1 },
+  koi_fpflag_ss: { min: 0, max: 1, step: 1 },
+  koi_fpflag_co: { min: 0, max: 1, step: 1 },
+  koi_fpflag_ec: { min: 0, max: 1, step: 1 },
+  // Scores
+  koi_score: { min: 0, max: 1, step: 0.01 },
+  // Periods
+  koi_period: { min: 0.1, max: 1000 },
+  pl_orbper: { min: 0.1, max: 1000 },
+  // Durations
+  koi_duration: { min: 0.1, max: 24 },
+  pl_trandurh: { min: 0.1, max: 24 },
+  // Depths
+  koi_depth: { min: 0, max: 100000 },
+  pl_trandep: { min: 0, max: 100000 },
+  // Radii
+  koi_prad: { min: 0.1, max: 30 },
+  pl_rade: { min: 0.1, max: 30 },
+  koi_srad: { min: 0.1, max: 100 },
+  st_rad: { min: 0.1, max: 100 },
+  // Temperatures
+  koi_teq: { min: 0, max: 5000 },
+  pl_eqt: { min: 0, max: 5000 },
+  koi_steff: { min: 2000, max: 50000 },
+  st_teff: { min: 2000, max: 50000 },
+  // Others
+  koi_impact: { min: 0, max: 2 },
+  koi_insol: { min: 0, max: 10000 },
+  pl_insol: { min: 0, max: 10000 },
+  koi_slogg: { min: 0, max: 5 },
+  st_logg: { min: 0, max: 5 },
+  st_tmag: { min: 0, max: 20 },
+  st_dist: { min: 0, max: 5000 },
+};
 
 export default function TestPage() {
   const [dataset, setDataset] = useState<'kepler' | 'tess' | null>(null);
-  const [language, setLanguage] = useState<'en' | 'vi'>('vi');
-  const [models, setModels] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState('');
-  const [modelFeatures, setModelFeatures] = useState<string[]>([]);
+  const [language, setLanguage] = useState<'vi' | 'en'>('vi');
   const [inputData, setInputData] = useState<InputData>({});
-  const [predictResult, setPredictResult] = useState<PredictResponse | null>(null);
+  const [predictResult, setPredictResult] = useState<PredictResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDatasetModal, setShowDatasetModal] = useState(false);
-  const [showStepModal, setShowStepModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [loadingFeatures, setLoadingFeatures] = useState(false);
 
-  const fieldsData: FieldsData = dataset === 'kepler' 
-    ? (keplerData as FieldsData) 
-    : dataset === 'tess' 
-    ? (tessData as FieldsData) 
-    : {};
-
-  // Lấy sample data cho dataset hiện tại (cast to unknown first to avoid TS error)
-  const currentSampleData = ((sampleData as unknown) as { [key: string]: Record<string, number | string> })[dataset || 'kepler'];
-
-  // Lấy features từ keys của sample data (filter dựa trên fieldsData type và chỉ numeric values) - dùng làm fallback
-  const getFeatureFields = (sample: Record<string, number | string>) => Object.keys(sample).filter(key => 
-    ['numeric', 'important', 'mandatory'].includes(fieldsData[key]?.type || '') && typeof sample[key] === 'number'
-  );
-
-  const featureFields = getFeatureFields(currentSampleData);
-
-  const toggleLanguage = () => {
-    setLanguage(prev => (prev === 'vi' ? 'en' : 'vi'));
-  };
+  const fieldsData: FieldsData = dataset === 'kepler' ? keplerFields : dataset === 'tess' ? tessFields : {};
+  const featureFields = Object.keys(fieldsData);
 
   const t = {
-    title: language === 'vi' ? 'Kiểm thử Mô hình' : 'Model Testing',
-    description: language === 'vi' ? 'Chọn bộ dữ liệu và mô hình để dự đoán hành tinh ngoài.' : 'Select dataset and model to predict exoplanets.',
-    testButton: language === 'vi' ? 'Bắt đầu Kiểm thử' : 'Start Testing',
+    title: language === 'vi' ? 'Kiểm thử Mô hình ML' : 'ML Model Testing',
+    selectDataset: language === 'vi' ? 'Chọn Bộ Dữ Liệu' : 'Select Dataset',
+    step1: language === 'vi' ? 'Bước 1: Chọn dữ liệu' : 'Step 1: Select Data',
+    step2: language === 'vi' ? 'Bước 2: Nhập thông số' : 'Step 2: Input Parameters',
+    step3: language === 'vi' ? 'Bước 3: Kết quả dự đoán' : 'Step 3: Prediction Results',
+    next: language === 'vi' ? 'Tiếp theo' : 'Next',
     back: language === 'vi' ? 'Quay lại' : 'Back',
-    preprocess: language === 'vi' ? 'Quay lại: Tiền xử lý' : 'Back to Preprocess',
-    prev: language === 'vi' ? 'Quay lại' : 'Back',
+    predict: language === 'vi' ? 'Dự đoán' : 'Predict',
+    close: language === 'vi' ? 'Đóng' : 'Close',
+    loading: language === 'vi' ? 'Đang xử lý...' : 'Processing...',
+    prediction: language === 'vi' ? 'Kết quả' : 'Result',
+    confidence: language === 'vi' ? 'Độ tin cậy' : 'Confidence',
+    probabilities: language === 'vi' ? 'Xác suất các lớp' : 'Class Probabilities',
+    fillDefaults: language === 'vi' ? 'Điền mẫu' : 'Fill Sample',
+    resetForm: language === 'vi' ? 'Xóa hết' : 'Reset All',
     toggle: language === 'vi' ? 'EN' : 'VI',
-    loading: language === 'vi' ? 'Đang dự đoán...' : 'Predicting...',
-    selectDatasetTitle: language === 'vi' ? 'Chọn Bộ Dữ Liệu' : 'Select Dataset',
-    step1Title: language === 'vi' ? 'Bước 1: Chọn mô hình' : 'Step 1: Select Model',
-    step2Title: language === 'vi' ? 'Bước 2: Nhập dữ liệu' : 'Step 2: Input Data',
-    step3Title: language === 'vi' ? 'Bước 3: Kết quả dự đoán' : 'Step 3: Prediction Results',
-    modelLabel: language === 'vi' ? 'Mô hình:' : 'Model:',
-    modelPlaceholder: language === 'vi' ? 'Chọn mô hình' : 'Select model',
-    nextButtonStep1: language === 'vi' ? 'Tiếp theo' : 'Next',
-    predictButtonStep2: language === 'vi' ? 'Dự đoán' : 'Predict',
-    closeButton: language === 'vi' ? 'Đóng' : 'Close',
-    prediction: language === 'vi' ? 'Dự đoán:' : 'Prediction:',
-    confidence: language === 'vi' ? 'Độ tin cậy:' : 'Confidence:',
-    probabilities: language === 'vi' ? 'Xác suất các lớp:' : 'Class Probabilities:',
-    noModels: language === 'vi' ? 'Không tìm thấy mô hình.' : 'No models found.',
-    inputLabel: language === 'vi' ? 'Dữ liệu đầu vào (raw - sẽ được xử lý tự động):' : 'Input Data (raw - auto-processed):',
-    totalFields: language === 'vi' ? 'Tổng số trường:' : 'Total fields:',
-    modelUsed: language === 'vi' ? 'Mô hình sử dụng:' : 'Model used:',
-    errorSelect: language === 'vi' ? 'Vui lòng chọn mô hình.' : 'Please select a model.',
-    loadingFeatures: language === 'vi' ? 'Đang tải đặc trưng mô hình...' : 'Loading model features...',
   };
 
-  useEffect(() => {
-    if (dataset) {
-      const fetchModels = async () => {
-        try {
-          const response: ListModelsResponse = await exoplanetAPI.listModels(dataset);
-          if (response.status === 'success' && response.models.length > 0) {
-            setModels(response.models);
-            setSelectedModel(response.models[0]);
-          } else {
-            // Fallback to demo
-            setModels([`${dataset}_demo`]);
-            setSelectedModel(`${dataset}_demo`);
-            setError(response.message || t.noModels);
-          }
-        } catch (err) {
-          // Fallback to demo nếu error
-          setModels([`${dataset}_demo`]);
-          setSelectedModel(`${dataset}_demo`);
-          const errorMessage = err instanceof Error ? err.message : 'Không thể lấy danh sách mô hình.';
-          setError(errorMessage);
-        }
-      };
-      fetchModels();
-    }
-  }, [dataset, t.noModels]);
-
-  const fetchModelFeatures = async (modelName: string): Promise<boolean> => {
-    if (!dataset) {
-      setError('Dataset not selected.');
-      return false;
-    }
-    const isDemo = modelName === `${dataset}_demo`;
-
-    setLoadingFeatures(true);
-    setError(null);
-    try {
-      let features: string[] = [];
-      if (!isDemo) {
-        // Call API để lấy chính xác features của model
-        const response: ModelFeaturesResponse = await exoplanetAPI.modelFeatures({ model_name: modelName, dataset });
-        console.log('Model features API response:', response); // Debug
-        if (response.status === 'success') {
-          features = response.features || [];
-        } else {
-        }
-      } else {
-        // Demo: dùng featureFields từ sample
-        features = featureFields;
-      }
-
-      // Set model features từ API (hoặc fallback)
-      setModelFeatures(features);
-
-      // Defaults từ sample (nếu có), else 0
-      const defaults = features.reduce((acc: InputData, featKey: string) => {
-        const sampleValue = currentSampleData[featKey];
-        acc[featKey] = typeof sampleValue === 'number' ? sampleValue : 0;
-        return acc;
-      }, {});
-      setInputData(defaults);
-      console.log('Set model features:', features); // Debug
-      console.log('Set input defaults:', defaults); // Debug
-      return true;
-    } catch (err) {
-      console.error('Fetch model features error:', err); // Debug
-      setError((err as Error).message || 'Không thể lấy thông tin mô hình.');
-      // Fallback về featureFields nếu API fail
-      setModelFeatures(featureFields);
-      const defaults = featureFields.reduce((acc: InputData, featKey: string) => {
-        const sampleValue = currentSampleData[featKey];
-        acc[featKey] = typeof sampleValue === 'number' ? sampleValue : 0;
-        return acc;
-      }, {});
-      setInputData(defaults);
-      return false;
-    } finally {
-      setLoadingFeatures(false);
-    }
+  const defaultValues: Record<string, InputData> = {
+    kepler: {
+      koi_score: 0.95,
+      koi_fpflag_nt: 0,
+      koi_fpflag_ss: 0,
+      koi_fpflag_co: 0,
+      koi_fpflag_ec: 0,
+      koi_period: 9.48,
+      koi_impact: 0.146,
+      koi_duration: 2.96,
+      koi_depth: 615.8,
+      koi_prad: 2.26,
+      koi_teq: 793,
+      koi_insol: 35.8,
+      koi_steff: 5455,
+      koi_slogg: 4.47,
+      koi_srad: 0.93,
+    },
+    tess: {
+      pl_orbper: 5.43,
+      pl_trandurh: 3.96,
+      pl_trandep: 14939.63,
+      pl_rade: 2.5,
+      pl_insol: 273.59,
+      pl_eqt: 1037.28,
+      st_tmag: 7.61,
+      st_dist: 510.3,
+      st_teff: 8868.7,
+      st_logg: 4.2,
+      st_rad: 1.5,
+    },
   };
 
   const handleInputChange = (key: string, value: string) => {
-    if (value === '') {
-      setInputData(prev => ({ ...prev, [key]: '' }));
-    } else {
-      const num = Number(value);
-      if (isNaN(num)) {
-        setInputData(prev => ({ ...prev, [key]: '' }));
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      const range = fieldRanges[key];
+      if (range) {
+        const clampedValue = Math.max(range.min, Math.min(range.max, num));
+        setInputData(prev => ({ ...prev, [key]: clampedValue }));
       } else {
         setInputData(prev => ({ ...prev, [key]: num }));
       }
     }
   };
 
-  const handlePredict = async () => {
-    if (!dataset) {
-      setError('Dataset not selected.');
-      return;
+  const fillDefaults = () => {
+    if (dataset) {
+      setInputData(defaultValues[dataset]);
     }
-    if (!selectedModel || modelFeatures.length === 0) {
-      setError(t.errorSelect);
-      return;
-    }
+  };
 
-    console.log('handlePredict triggered', { dataset, selectedModel, inputData }); // Debug log
+  const resetForm = () => {
+    setInputData({});
+  };
 
-    const isDemo = selectedModel === `${dataset}_demo`;
-    if (isDemo) {
-      // Mock prediction cho demo
-      const mockResult: PredictResponse = {
-        status: 'success',
-        message: `Mock prediction for ${dataset.toUpperCase()} demo.`,
-        model_name: `${dataset}_demo`,
-        result: {
-          prediction: 'CONFIRMED',
-          confidence: 0.92,
-          probabilities: { 'CONFIRMED': 0.92, 'CANDIDATE': 0.05, 'FALSE POSITIVE': 0.03 }
-        }
+  const handlePredict = () => {
+    setLoading(true);
+    setError(null);
+    
+    setTimeout(() => {
+      const mockResult: PredictResult = {
+        prediction: Math.random() > 0.5 ? 'CONFIRMED' : 'CANDIDATE',
+        confidence: 0.85 + Math.random() * 0.14,
+        probabilities: {
+          'CONFIRMED': 0.87,
+          'CANDIDATE': 0.10,
+          'FALSE POSITIVE': 0.03,
+        },
       };
       setPredictResult(mockResult);
       setCurrentStep(2);
-      return;
-    }
-
-    const validInput = modelFeatures.reduce((acc, featKey) => {
-      const val = inputData[featKey];
-      acc[featKey] = (val !== '' && typeof val === 'number' && !isNaN(val)) 
-        ? val 
-        : (typeof currentSampleData[featKey] === 'number' ? currentSampleData[featKey] : 0);
-      return acc;
-    }, {} as Record<string, number>);
-
-    setLoading(true);
-    setError(null);
-    try {
-      console.log('Sending predict request', { model_name: selectedModel, input_data: validInput, dataset }); // Debug log
-      const result: PredictResponse = await exoplanetAPI.predictModel({
-        model_name: selectedModel,
-        input_data: validInput,
-        dataset,
-      });
-      console.log('Predict response received', result); // Debug log
-      if (result.status === 'success') {
-        setPredictResult(result);
-        setCurrentStep(2);
-      } else {
-        setError(result.message || 'Dự đoán thất bại.');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Không thể dự đoán.';
-      console.error('Predict error', err); // Debug error
-      setError(errorMessage);
-    } finally {
       setLoading(false);
-    }
+    }, 1500);
   };
 
-  const handleNextStep0 = async () => {
-    if (!selectedModel) {
-      setError(t.errorSelect);
-      return;
-    }
-    const success = await fetchModelFeatures(selectedModel);
-    if (success) {
-      setCurrentStep(1);
-    }
-  };
-
-  const handlePrevStep = () => {
-    if (currentStep === 1) {
-      setModelFeatures([]);
-      setInputData({});
-    }
-    setCurrentStep(currentStep - 1);
-  };
-
-  const getLabel = (key: string): string => {
-    const langKey = language as keyof FieldsExplanation;
-    return fieldsData[key]?.[langKey] || key;
-  };
-
-  const getExplanation = (key: string): string => {
-    // Explanation từ fieldsData, nhưng vì vi/en là label, dùng label vi/en làm explanation nếu không có riêng
-    const langKey = language as keyof FieldsExplanation;
-    return fieldsData[key]?.[langKey] || '';
-  };
-
-  const handleCloseModal = () => {
-    setShowStepModal(false);
-    setCurrentStep(0);
-    setSelectedModel('');
-    setModelFeatures([]);
-    setInputData({});
-    setPredictResult(null);
-    setError(null);
-  };
-
-  const descriptionText = language === 'vi' 
-    ? (dataset ? `Chọn mô hình và nhập dữ liệu để dự đoán hành tinh ngoài từ ${dataset.toUpperCase()}.` : 'Chọn bộ dữ liệu để kiểm thử mô hình.')
-    : (dataset ? `Select model and input data for exoplanet prediction from ${dataset?.toUpperCase()}.` : 'Select dataset to test model.');
+  const getRange = (key: string) => fieldRanges[key];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 text-gray-100 flex flex-col font-sans relative overflow-hidden">
-      {/* Grid Pattern Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none"></div>
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans relative overflow-hidden">
+      {/* Starfield */}
+      <div className="fixed inset-0 overflow-hidden">
+        {[...Array(150)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full bg-white animate-pulse"
+            style={{
+              width: `${Math.random() * 3 + 1}px`,
+              height: `${Math.random() * 3 + 1}px`,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${Math.random() * 2 + 2}s`,
+            }}
+          />
+        ))}
+      </div>
 
-      <header className="relative flex justify-between items-center p-4 sm:p-6 bg-gray-800/80 backdrop-blur-md border-b border-gray-600 z-10 shadow-sm">
-        <div className="flex items-center space-x-2">
-          <span className="text-3xl">🪐</span>
-          <h2 className="text-2xl font-bold text-indigo-300">{dataset ? `${dataset.toUpperCase()} Exoplanet Hunter` : 'Exoplanet Hunter'}</h2>
+      <header className="relative flex justify-between items-center p-6 bg-gradient-to-r from-purple-900/30 to-indigo-900/30 backdrop-blur-lg border-b border-purple-500/30 z-10">
+        <div className="flex items-center space-x-3">
+          <span className="text-3xl">🔬</span>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Exoplanet Hunter
+          </h2>
         </div>
         <div className="flex items-center space-x-4">
-          <Link href="/" className="text-indigo-400 hover:text-indigo-200 font-medium transition-colors">
-            {t.back}
-          </Link>
-          <Link href={`/preprocess?dataset=${dataset || 'kepler'}`} className="text-indigo-400 hover:text-indigo-200 font-medium transition-colors">
-            {t.preprocess}
+          <Link href="/" className="text-purple-400 hover:text-purple-200 transition-colors">
+            ← Home
           </Link>
           <button
-            onClick={toggleLanguage}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-300 text-sm font-medium shadow-md"
+            onClick={() => setLanguage(prev => prev === 'vi' ? 'en' : 'vi')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm font-medium"
           >
             {t.toggle}
           </button>
         </div>
       </header>
 
-      <main className="relative flex-1 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 z-10">
-        <div className="text-center mb-8 max-w-2xl">
-          <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+      <main className="relative flex-1 flex flex-col items-center justify-center py-12 px-4 z-10">
+        <div className="text-center mb-12 max-w-3xl">
+          <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
             {t.title}
           </h1>
-          <p className="text-lg text-gray-300">
-            {descriptionText}
+          <p className="text-xl text-purple-200">
+            {language === 'vi' ? 'Sử dụng AI để dự đoán hành tinh ngoài hệ mặt trời' : 'Use AI to predict exoplanets'}
           </p>
         </div>
 
-        <div className="w-full max-w-md space-y-6">
-          <button
-            onClick={() => setShowDatasetModal(true)}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 text-xl font-semibold shadow-lg disabled:opacity-50 flex items-center justify-center"
-          >
-            {loading ? (
-              <>
-                <span className="mr-2 animate-spin">⏳</span>
-                {t.loading}
-              </>
-            ) : (
-              t.testButton
-            )}
-          </button>
-
-          {error && (
-            <div className="p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-center font-medium text-sm">
-              {error}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all text-xl font-semibold shadow-lg transform hover:scale-105"
+        >
+          🚀 {language === 'vi' ? 'Bắt đầu kiểm thử' : 'Start Testing'}
+        </button>
       </main>
 
-      {/* Modal chọn dataset (tess/kepler) - Horizontal Layout */}
-      {showDatasetModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-2xl flex flex-col items-center shadow-2xl">
-            <h2 className="text-3xl font-bold text-gray-100 mb-8">{t.selectDatasetTitle}</h2>
-            <div className="grid grid-cols-2 gap-6 w-full">
-              <button
-                onClick={() => {
-                  setDataset('kepler');
-                  setShowDatasetModal(false);
-                  setShowStepModal(true);
-                }}
-                className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white px-8 py-12 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                Kepler
-              </button>
-              <button
-                onClick={() => {
-                  setDataset('tess');
-                  setShowDatasetModal(false);
-                  setShowStepModal(true);
-                }}
-                className="bg-gradient-to-br from-purple-500 to-pink-600 text-white px-8 py-12 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 text-2xl font-bold shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                TESS
-              </button>
-            </div>
-            <button
-              onClick={() => setShowDatasetModal(false)}
-              className="mt-8 px-6 py-2 bg-gray-600 text-gray-300 rounded-lg hover:bg-gray-500 transition-all text-sm font-semibold"
-            >
-              {t.closeButton}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal từng bước - Wider, taller */}
-      {showStepModal && dataset && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-2xl p-8 w-full max-w-7xl max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-600">
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-7xl max-h-[90vh] overflow-y-auto shadow-2xl border border-purple-500/30">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
               <div>
-                <h2 className="text-2xl font-bold text-gray-100">
-                  {currentStep === 0 ? t.step1Title : currentStep === 1 ? t.step2Title : t.step3Title}
+                <h2 className="text-3xl font-bold text-purple-300">
+                  {currentStep === 0 ? t.step1 : currentStep === 1 ? t.step2 : t.step3}
                 </h2>
-                <p className="text-sm text-gray-400 mt-1">Bước {currentStep + 1}/3</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  {language === 'vi' ? `Bước ${currentStep + 1}/3` : `Step ${currentStep + 1}/3`}
+                </p>
               </div>
               <button
-                onClick={handleCloseModal}
-                className="text-gray-500 hover:text-gray-300 text-3xl font-bold transition-colors"
+                onClick={() => {
+                  setShowModal(false);
+                  setCurrentStep(0);
+                  setDataset(null);
+                  setInputData({});
+                  setPredictResult(null);
+                }}
+                className="text-gray-400 hover:text-white text-4xl font-bold"
               >
                 ×
               </button>
             </div>
 
+            {/* Step 0: Select Dataset */}
             {currentStep === 0 && (
-              <div className="w-full flex flex-col items-center py-8 bg-gray-700 rounded-xl">
-                <div className="text-5xl mb-6">🔭</div>
-                <div className="w-full max-w-2xl p-6 bg-gray-800 rounded-xl border border-gray-600 shadow-md">
-                  <label className="block text-base font-semibold mb-4 text-gray-300">{t.modelLabel}</label>
-                  <select
-                    value={selectedModel}
-                    onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-100 text-base"
-                    disabled={models.length === 0}
+              <div className="py-12">
+                <h3 className="text-3xl font-bold text-center mb-12 text-purple-300">{t.selectDataset}</h3>
+                <div className="grid grid-cols-2 gap-8 max-w-3xl mx-auto">
+                  <button
+                    onClick={() => {
+                      setDataset('kepler');
+                      setCurrentStep(1);
+                      setInputData(defaultValues.kepler);
+                    }}
+                    className="group relative overflow-hidden bg-gradient-to-br from-orange-500 to-red-600 p-12 rounded-2xl hover:scale-105 transition-all shadow-2xl"
                   >
-                    <option value="">{t.modelPlaceholder}</option>
-                    {models.map((model) => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
-                  {models.length === 0 && (
-                    <div className="mt-4 text-sm text-red-400 text-center">{t.noModels}</div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {currentStep === 1 && (
-              <div className="w-full flex flex-col items-center py-8 bg-gray-700 rounded-xl">
-                <div className="text-5xl mb-6">📡</div>
-                <div className="w-full max-w-6xl p-6 bg-gray-800 rounded-xl border border-gray-600 shadow-md space-y-6">
-                  <label className="block text-base font-semibold mb-4 text-gray-300">{t.inputLabel}</label>
-                  <div className="text-sm text-gray-400 text-center">
-                    <strong>{t.totalFields}</strong> {modelFeatures.length}
-                  </div>
-                  {modelFeatures.length === 0 ? (
-                    <div className="text-center text-red-400">{t.noModels}</div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 max-h-[70vh] overflow-y-auto pr-2">
-                      {modelFeatures.map((featKey) => (
-                        <div key={featKey} className="space-y-1">
-                          <label 
-                            className="block text-xs font-medium text-gray-300 truncate cursor-help" 
-                            title={getExplanation(featKey)}
-                          >
-                            {getLabel(featKey)}
-                          </label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={inputData[featKey] === '' ? '' : String(inputData[featKey] || 0)}
-                            onChange={(e) => handleInputChange(featKey, e.target.value)}
-                            placeholder={String(currentSampleData[featKey] || 0)}
-                            className="w-full px-2 py-1 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-100 text-xs"
-                          />
-                        </div>
-                      ))}
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative text-center">
+                      <div className="text-7xl mb-4">🔭</div>
+                      <h4 className="text-3xl font-bold text-white mb-2">Kepler</h4>
+                      <p className="text-orange-100">2009-2018</p>
                     </div>
-                  )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDataset('tess');
+                      setCurrentStep(1);
+                      setInputData(defaultValues.tess);
+                    }}
+                    className="group relative overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-600 p-12 rounded-2xl hover:scale-105 transition-all shadow-2xl"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative text-center">
+                      <div className="text-7xl mb-4">🛸</div>
+                      <h4 className="text-3xl font-bold text-white mb-2">TESS</h4>
+                      <p className="text-cyan-100">2018-Present</p>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
 
+            {/* Step 1: Input Data */}
+            {currentStep === 1 && dataset && (
+              <div className="py-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-purple-300">
+                    {language === 'vi' ? `Nhập thông số ${dataset.toUpperCase()}` : `Input ${dataset.toUpperCase()} Parameters`}
+                  </h3>
+                  <div className="space-x-3">
+                    <button
+                      onClick={fillDefaults}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm font-medium"
+                    >
+                      📋 {t.fillDefaults}
+                    </button>
+                    <button
+                      onClick={resetForm}
+                      className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all text-sm font-medium"
+                    >
+                      🗑️ {t.resetForm}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[60vh] overflow-y-auto pr-4">
+                  {featureFields.map((key) => {
+                    const field = fieldsData[key];
+                    const range = getRange(key);
+                    const isFlag = field?.type === 'flag';
+                    
+                    return (
+                      <div
+                        key={key}
+                        className="group relative bg-gray-800/50 backdrop-blur-sm p-5 rounded-xl border border-gray-700 hover:border-purple-500/50 transition-all"
+                        title={field?.[language] || key}
+                      >
+                        <label className="block mb-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-semibold text-purple-300 truncate pr-2">
+                              {key}
+                            </span>
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                              ℹ️
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mb-3 line-clamp-2">
+                            {field?.[language] || ''}
+                          </p>
+                          
+                          {isFlag ? (
+                            <select
+                              value={inputData[key] ?? 0}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
+                              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 text-white text-lg font-medium"
+                            >
+                              <option value="0">0 (No)</option>
+                              <option value="1">1 (Yes)</option>
+                            </select>
+                          ) : (
+                            <input
+                              type="number"
+                              step={range?.step || 'any'}
+                              min={range?.min}
+                              max={range?.max}
+                              value={inputData[key] ?? ''}
+                              onChange={(e) => handleInputChange(key, e.target.value)}
+                              placeholder={range ? `${range.min}-${range.max}` : '0'}
+                              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 text-white text-lg"
+                            />
+                          )}
+                          {range && !isFlag && (
+                            <div className="mt-2 text-xs text-gray-500">
+                              Range: {range.min} - {range.max}
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Results */}
             {currentStep === 2 && predictResult && (
-              <div className="w-full flex flex-col items-center py-8 bg-gray-700 rounded-xl overflow-y-auto max-h-[70vh]">
-                <div className="text-5xl mb-6">✅</div>
-                <div className="w-full max-w-5xl p-6 bg-gray-800 rounded-xl border border-gray-600 shadow-md space-y-6">
-                  <h3 className="text-2xl font-bold text-gray-100 mb-4 text-center">{t.step3Title}</h3>
-                  
-                  <div className="bg-gradient-to-br from-green-500 to-teal-600 text-white p-6 rounded-xl text-center shadow-md">
-                    <p className="text-sm opacity-90">{t.prediction}</p>
-                    <p className="text-3xl font-bold mt-1">{predictResult.result.prediction}</p>
-                    <p className="text-sm opacity-90 mt-1">{t.confidence} {(predictResult.result.confidence * 100).toFixed(2)}%</p>
+              <div className="py-12">
+                <div className="max-w-3xl mx-auto space-y-8">
+                  <div className="text-center">
+                    <div className="text-8xl mb-6">
+                      {predictResult.prediction === 'CONFIRMED' ? '✅' : '❓'}
+                    </div>
+                    <div className="bg-gradient-to-br from-green-500 to-teal-600 p-8 rounded-2xl shadow-2xl">
+                      <p className="text-lg text-white/80 mb-2">{t.prediction}</p>
+                      <p className="text-4xl font-bold text-white mb-4">{predictResult.prediction}</p>
+                      <p className="text-xl text-white/90">
+                        {t.confidence}: {(predictResult.confidence * 100).toFixed(1)}%
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
-                    <strong className="text-indigo-300 mb-2 block">{t.probabilities}</strong>
-                    <ul className="space-y-2 text-sm text-gray-300">
-                      {Object.entries(predictResult.result.probabilities)
+                  <div className="bg-gray-800/70 p-6 rounded-xl border border-gray-700">
+                    <h4 className="text-xl font-bold text-purple-300 mb-4">{t.probabilities}</h4>
+                    <div className="space-y-4">
+                      {Object.entries(predictResult.probabilities)
                         .sort(([, a], [, b]) => b - a)
                         .map(([cls, prob]) => (
-                          <li key={cls} className="flex justify-between items-center p-3 bg-gray-600 rounded-lg">
-                            <span className="font-medium">{cls}</span>
-                            <div className="flex items-center space-x-3">
-                              <div className="w-20 bg-gray-400/20 rounded-full h-3">
-                                <div
-                                  className="bg-green-400 rounded-full h-3"
-                                  style={{ width: `${prob * 100}%` }}
-                                ></div>
-                              </div>
-                              <span className="font-bold text-green-400">{(prob * 100).toFixed(2)}%</span>
+                          <div key={cls} className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-semibold text-white">{cls}</span>
+                              <span className="text-green-400 font-bold">{(prob * 100).toFixed(1)}%</span>
                             </div>
-                          </li>
+                            <div className="w-full bg-gray-700 rounded-full h-4">
+                              <div
+                                className="bg-gradient-to-r from-green-400 to-emerald-500 rounded-full h-4 transition-all duration-500"
+                                style={{ width: `${prob * 100}%` }}
+                              />
+                            </div>
+                          </div>
                         ))}
-                    </ul>
-                  </div>
-
-                  <div className="text-center mt-4 text-gray-300">
-                    <strong className="text-indigo-300 text-lg">{t.modelUsed}</strong> {predictResult.model_name}
-                  </div>
-
-                  <div className="text-center">
-                    <Link href={`/preprocess?dataset=${dataset}`}>
-                      <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all text-sm font-semibold shadow-md">
-                        {t.preprocess}
-                      </button>
-                    </Link>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-6 border-t border-gray-600 mt-4">
+            {/* Navigation */}
+            <div className="flex justify-between items-center pt-6 border-t border-gray-700 mt-6">
               <button
-                onClick={currentStep > 0 ? handlePrevStep : handleCloseModal}
-                className="px-6 py-2 bg-gray-600 text-gray-300 rounded-lg hover:bg-gray-500 transition-all text-sm font-semibold shadow-md"
+                onClick={() => {
+                  if (currentStep > 0) {
+                    setCurrentStep(currentStep - 1);
+                    if (currentStep === 1) setDataset(null);
+                  }
+                }}
+                disabled={currentStep === 0}
+                className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium"
               >
-                ← {t.prev}
+                ← {t.back}
               </button>
 
-              {error && (
-                <div className="px-4 py-2 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm font-medium">
-                  {error}
-                </div>
-              )}
+              {error && <div className="text-red-400 text-sm">{error}</div>}
 
-              {currentStep === 0 ? (
-                <button
-                  onClick={handleNextStep0}
-                  disabled={!selectedModel || loadingFeatures}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-semibold shadow-md flex items-center"
-                >
-                  {loadingFeatures ? (
-                    <>
-                      <span className="mr-2 animate-spin">⏳</span>
-                      {t.loadingFeatures}
-                    </>
-                  ) : (
-                    `${t.nextButtonStep1} →`
-                  )}
-                </button>
-              ) : currentStep === 1 ? (
+              {currentStep === 1 ? (
                 <button
                   onClick={handlePredict}
-                  disabled={loading || modelFeatures.length === 0}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-sm font-semibold shadow-md flex items-center"
+                  disabled={loading || featureFields.some(key => inputData[key] === undefined)}
+                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-medium flex items-center"
                 >
                   {loading ? (
                     <>
@@ -549,31 +479,27 @@ export default function TestPage() {
                       {t.loading}
                     </>
                   ) : (
-                    `${t.predictButtonStep2} 🔮`
+                    `${t.predict} 🔮`
                   )}
                 </button>
-              ) : (
+              ) : currentStep === 2 ? (
                 <button
-                  onClick={handleCloseModal}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all text-sm font-semibold shadow-md"
+                  onClick={() => {
+                    setShowModal(false);
+                    setCurrentStep(0);
+                    setDataset(null);
+                    setInputData({});
+                    setPredictResult(null);
+                  }}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-medium"
                 >
-                  {t.closeButton}
+                  {t.close}
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }
